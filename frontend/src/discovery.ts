@@ -38,15 +38,21 @@ function extent(values: number[]): number[] {
 }
 
 function plot(options: PlotOptions): string {
-  const width = 620, height = 275, left = 52, right = 15, top = 15, bottom = 43;
+  const mobile = window.matchMedia('(max-width: 640px)').matches;
+  const width = mobile ? 460 : 620, height = mobile ? 300 : 275;
+  const left = mobile ? 63 : 52, right = mobile ? 20 : 15, top = 15, bottom = mobile ? 51 : 43;
+  const ticks = mobile ? 3 : 4;
+  // The viewBox scales to the card width. Larger SVG text keeps phone labels
+  // readable at approximately 300 CSS pixels without changing desktop charts.
+  const textStyle = mobile ? ' style="font-size:16px"' : '';
   const all = options.series.flatMap(s => s.points).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
   const xr = options.xRange ?? extent(all.map(p => p.x)), yr = options.yRange ?? extent(all.map(p => p.y));
   const xs = (x: number): number => left + (x - xr[0]) / (xr[1] - xr[0] || 1) * (width - left - right);
   const ys = (y: number): number => top + (options.reverseY ? y - yr[0] : yr[1] - y) / (yr[1] - yr[0] || 1) * (height - top - bottom);
   let body = '';
-  for (let tick = 0; tick <= 4; tick++) {
-    const xv = xr[0] + tick / 4 * (xr[1] - xr[0]), yv = yr[0] + tick / 4 * (yr[1] - yr[0]);
-    body += `<line x1="${left}" x2="${width - right}" y1="${ys(yv)}" y2="${ys(yv)}" class="chart-grid"/><text x="${left - 8}" y="${ys(yv) + 3}" text-anchor="end" class="chart-text">${escapeHTML(format(yv, 2))}</text><text x="${xs(xv)}" y="${height - bottom + 18}" text-anchor="middle" class="chart-text">${escapeHTML(format(xv, xr[1] - xr[0] < 0.1 ? 5 : xr[1] - xr[0] < 3 ? 2 : 0))}</text>`;
+  for (let tick = 0; tick <= ticks; tick++) {
+    const xv = xr[0] + tick / ticks * (xr[1] - xr[0]), yv = yr[0] + tick / ticks * (yr[1] - yr[0]);
+    body += `<line x1="${left}" x2="${width - right}" y1="${ys(yv)}" y2="${ys(yv)}" class="chart-grid"/><text x="${left - 8}" y="${ys(yv) + (mobile ? 5 : 3)}" text-anchor="end" class="chart-text"${textStyle}>${escapeHTML(format(yv, 2))}</text><text x="${xs(xv)}" y="${height - bottom + (mobile ? 24 : 18)}" text-anchor="middle" class="chart-text"${textStyle}>${escapeHTML(format(xv, xr[1] - xr[0] < 0.1 ? 5 : xr[1] - xr[0] < 3 ? 2 : 0))}</text>`;
   }
   if (options.zeroLine && yr[0] <= 0 && yr[1] >= 0) body += `<line x1="${left}" x2="${width - right}" y1="${ys(0)}" y2="${ys(0)}" stroke="#597082" stroke-dasharray="4 4"/>`;
   for (const series of options.series) {
@@ -60,7 +66,7 @@ function plot(options: PlotOptions): string {
   }
   if (options.markerX !== undefined) body += `<line x1="${xs(options.markerX)}" x2="${xs(options.markerX)}" y1="${top}" y2="${height - bottom}" stroke="#e9bb8c" opacity=".8" stroke-dasharray="3 4"/>`;
   if (options.highlight) body += `<circle cx="${xs(options.highlight.x)}" cy="${ys(options.highlight.y)}" r="5" stroke="#efac7d" stroke-width="1.5" fill="#0e1623"/>`;
-  body += `<line x1="${left}" x2="${width - right}" y1="${height - bottom}" y2="${height - bottom}" class="chart-axis"/><text x="${width / 2}" y="${height - 4}" text-anchor="middle" class="chart-label">${escapeHTML(options.xLabel)}</text><text transform="translate(12 ${height / 2}) rotate(-90)" text-anchor="middle" class="chart-label">${escapeHTML(options.yLabel)}</text>`;
+  body += `<line x1="${left}" x2="${width - right}" y1="${height - bottom}" y2="${height - bottom}" class="chart-axis"/><text x="${width / 2}" y="${height - 4}" text-anchor="middle" class="chart-label"${textStyle}>${escapeHTML(options.xLabel)}</text><text transform="translate(${mobile ? 17 : 12} ${height / 2}) rotate(-90)" text-anchor="middle" class="chart-label"${textStyle}>${escapeHTML(options.yLabel)}</text>`;
   return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(options.label)}">${body}</svg>`;
 }
 
