@@ -63,6 +63,26 @@ def main(argv=None) -> int:
     source.add_argument("--input", type=Path, help="CSV: time_jd,magnitude,error_mag[,band]")
     analyze.add_argument("--output", type=Path)
     analyze.add_argument("--band")
+    research = sub.add_parser("research", help="Compare periodic hypotheses, cadence, residuals and conditional observations")
+    research_source = research.add_mutually_exclusive_group(required=True)
+    research_source.add_argument("--star")
+    research_source.add_argument("--input", type=Path)
+    research.add_argument("--band")
+    research.add_argument("--time-system", choices=("JD", "HJD", "BJD"), default="JD")
+    research.add_argument("--min-period", type=float, default=50)
+    research.add_argument("--max-period", type=float, default=1000)
+    research.add_argument("--samples", type=int, default=800)
+    research.add_argument("--observations-limit", type=int, default=3000)
+    research.add_argument("--threads", type=int, default=1)
+    research.add_argument("--output", type=Path)
+    simulate = sub.add_parser("simulate", help="Run the C++ normalized nonlinear oscillator and convergence check")
+    simulate.add_argument("--period-days", type=float, default=300)
+    simulate.add_argument("--damping", type=float, default=0.05)
+    simulate.add_argument("--drive", type=float, default=0.15)
+    simulate.add_argument("--nonlinearity", type=float, default=0.2)
+    simulate.add_argument("--cycles", type=int, default=6)
+    simulate.add_argument("--steps-per-cycle", type=int, default=200)
+    simulate.add_argument("--output", type=Path)
     batch = sub.add_parser("batch", help="Distribute independent star fits across threads or MPI ranks")
     batch.add_argument("--ids", type=Path, required=True, help="One catalog id per line")
     batch.add_argument("--output", type=Path, required=True, help="JSON Lines output; only rank 0 writes")
@@ -98,6 +118,22 @@ def main(argv=None) -> int:
                 options["band"] = args.band
             result = fit_star(args.star, options) if args.star else analyze_lightcurve(read_observations_csv(args.input), **options)
             write_json(args.output, result)
+        elif args.command == "research":
+            from .catalog import load_lightcurve
+            from .research import investigate_lightcurve
+            curve = load_lightcurve(args.star) if args.star else read_observations_csv(args.input)
+            if args.input:
+                curve["time_system"] = args.time_system
+            result = investigate_lightcurve(curve, args.min_period, args.max_period, samples=args.samples,
+                                            threads=args.threads, observations_limit=args.observations_limit,
+                                            band=args.band)
+            write_json(args.output, result)
+        elif args.command == "simulate":
+            from .research import simulate_pulsation
+            settings = vars(args).copy()
+            settings.pop("command")
+            settings.pop("output")
+            write_json(args.output, simulate_pulsation(**settings))
         elif args.command == "batch":
             comm, rank, size = None, 0, 1
             if args.mpi:

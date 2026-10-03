@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thoth-mira"
-version = "2.0.0"
+version = "2.1.0"
 description = "A Mira variable star observatory with native C++ analysis and Python visualization"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,7 +22,7 @@ thoth = "thoth.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-thoth = ["web/*", "data/*", "data/lightcurves/*"]
+thoth = ["web/*", "web/assets/*", "data/*", "data/lightcurves/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

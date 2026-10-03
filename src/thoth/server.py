@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import io
+import json
+import mimetypes
 import statistics
 import threading
 import time
@@ -18,9 +20,14 @@ from pydantic import BaseModel, Field, model_validator
 from . import __version__
 from .catalog import CatalogError, catalog_manifest, get_star, load_catalog, load_lightcurve
 from .science import analyze_lightcurve, native_status
+from .datasets import import_dataset, list_datasets, read_record, write_record
 
 app = FastAPI(title="THOTHv2 Mira Observatory", version=__version__)
 WEB = Path(__file__).parent / "web"
+# Windows registry mappings can label .js as text/plain, which browsers reject
+# for ES modules. Pin standard web asset types within this process only.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 EXAMPLE_STAR_ID = "OGLE-BLG-LPV-096697"
 COVERAGE = "Catalog entries from complete OGLE Mira lists and GCVS exact M classifications. Catalogs may overlap; this is not a deduplicated census of every known Mira."
 
@@ -69,6 +76,14 @@ def filter_stars(search: str = "", catalog: str = "", region: str = "",
 @app.get("/api/status")
 def status():
     return {"version": __version__, **native_status(), "example_star_id": EXAMPLE_STAR_ID}
+
+
+@app.get("/api/health")
+def health():
+    state = native_status()
+    if not state["native_available"]:
+        raise HTTPException(503, "Native science engine is unavailable.")
+    return {"ready": True, "version": __version__, **state}
 
 
 @app.get("/api/catalog")
@@ -136,6 +151,8 @@ def analyze(request: AnalysisRequest):
     record = get_star(request.star_id)
     if record is None:
         raise HTTPException(404, "Star not found.")
+    if not _compute_slot.acquire(blocking=False):
+        raise HTTPException(409, "A compute experiment is already running. Wait for its measured results.")
     try:
         curve = load_lightcurve(record["id"])
         result = analyze_lightcurve(curve, **request.model_dump(exclude={"star_id"}))
@@ -145,6 +162,8 @@ def analyze(request: AnalysisRequest):
         raise HTTPException(422, str(error)) from error
     except RuntimeError as error:
         raise HTTPException(503, str(error)) from error
+    finally:
+        _compute_slot.release()
     result.update({"star_id": record["id"], "catalog_period_days": record.get("period_days")})
     return result
 
@@ -170,6 +189,7 @@ def index():
 
 
 app.mount("/static", StaticFiles(directory=WEB, check_dir=False), name="static")
+app.mount("/assets", StaticFiles(directory=WEB / "assets", check_dir=False), name="assets")
 
 # One experiment at a time keeps an interactive demo from oversubscribing the host.
 _jobs: dict[str, dict] = {}
@@ -240,3 +260,164 @@ def cluster_job(job_id: str):
         if job_id not in _jobs:
             raise HTTPException(404, "Compute job not found (history is process-local).")
         return copy.deepcopy(_jobs[job_id])
+
+
+class DatasetRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    csv_text: str = Field(min_length=20, max_length=8_000_000)
+    time_system: str = Field(pattern=r"^(JD|HJD|BJD)$")
+    band: str = Field(min_length=1, max_length=24)
+
+    @model_validator(mode="after")
+    def clean_labels(self):
+        self.name, self.band = self.name.strip(), self.band.strip()
+        if not self.name or not self.band:
+            raise ValueError("Supply a dataset name and selected photometric band.")
+        return self
+
+
+@app.post("/api/datasets", status_code=201)
+def upload_dataset(request: DatasetRequest):
+    try:
+        record = import_dataset(**request.model_dump())
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except OSError as error:
+        raise HTTPException(503, "The local workspace cannot save observations.") from error
+    return {key: value for key, value in record.items() if key != "observations"}
+
+
+@app.get("/api/datasets")
+def imported_datasets():
+    return list_datasets()
+
+
+@app.get("/api/datasets/{dataset_id}")
+def dataset(dataset_id: str):
+    record = read_record("datasets", dataset_id)
+    if record is None:
+        raise HTTPException(404, "Dataset not found in this local workspace.")
+    return record
+
+
+_research_jobs: dict[str, dict] = {}
+_research_jobs_lock = threading.Lock()
+
+
+class ResearchRequest(BaseModel):
+    star_id: str | None = Field(None, max_length=150)
+    dataset_id: str | None = Field(None, pattern=r"^[0-9a-f]{32}$")
+    min_period: float = Field(50, ge=0.5, le=100_000, allow_inf_nan=False)
+    max_period: float = Field(1000, ge=0.5, le=100_000, allow_inf_nan=False)
+    samples: int = Field(800, ge=50, le=3000)
+    threads: int = Field(1, ge=1, le=32)
+    observations_limit: int = Field(3000, ge=30, le=3000)
+
+    @model_validator(mode="after")
+    def validate_experiment(self):
+        if bool(self.star_id) == bool(self.dataset_id):
+            raise ValueError("Choose exactly one catalog star or imported dataset.")
+        if self.min_period >= self.max_period:
+            raise ValueError("Minimum period must be less than maximum period.")
+        return self
+
+
+def execute_research_job(job_id: str, settings: dict):
+    started = time.perf_counter()
+
+    def progress(event):
+        with _research_jobs_lock:
+            job = _research_jobs[job_id]
+            job.update(state="running", progress=event)
+            job["events"].append({**event, "elapsed_seconds": time.perf_counter() - started})
+            job["events"] = job["events"][-80:]
+
+    try:
+        from .research import investigate_lightcurve
+        progress({"stage": "loading", "percent": 2, "detail": "Loading observations and provenance"})
+        curve = (read_record("datasets", settings["dataset_id"]) if settings.get("dataset_id")
+                 else load_lightcurve(settings["star_id"]))
+        if curve is None:
+            raise ValueError("The selected dataset no longer exists.")
+        result = investigate_lightcurve(curve, **{key: value for key, value in settings.items()
+                                                 if key not in {"star_id", "dataset_id"}}, progress=progress)
+        result["request"] = settings
+        result["job_id"] = job_id
+        # Confirm the API can serialize the evidence before publishing success.
+        json.dumps(result, allow_nan=False)
+        progress({"stage": "complete", "percent": 100, "detail": "Evidence report ready"})
+        with _research_jobs_lock:
+            _research_jobs[job_id].update(state="complete", result=result)
+            snapshot = dict(_research_jobs[job_id])
+        try:
+            write_record("reports", job_id, snapshot)
+        except (OSError, ValueError):
+            with _research_jobs_lock:
+                _research_jobs[job_id]["persistence_warning"] = "Report is available for this session; saving to the workspace failed."
+    except Exception as error:
+        with _research_jobs_lock:
+            _research_jobs[job_id].update(state="failed", result=None, error=str(error))
+    finally:
+        _compute_slot.release()
+
+
+@app.post("/api/research/jobs", status_code=202)
+def start_research_job(request: ResearchRequest):
+    if request.star_id is not None and get_star(request.star_id) is None:
+        raise HTTPException(404, "Star not found.")
+    if request.dataset_id is not None and read_record("datasets", request.dataset_id) is None:
+        raise HTTPException(404, "Dataset not found in this local workspace.")
+    if not native_status()["native_available"]:
+        raise HTTPException(503, "Build the native engine before running a research job.")
+    if not _compute_slot.acquire(blocking=False):
+        raise HTTPException(409, "A compute experiment is already running. Wait for its measured results.")
+    job_id = uuid.uuid4().hex
+    with _research_jobs_lock:
+        while len(_research_jobs) >= 12:
+            _research_jobs.pop(next(iter(_research_jobs)))
+        _research_jobs[job_id] = {"job_id": job_id, "state": "queued", "progress": {"stage": "preparing", "percent": 0},
+                                  "events": [], "result": None, "error": None}
+    try:
+        threading.Thread(target=execute_research_job, args=(job_id, request.model_dump()), daemon=True).start()
+    except Exception as error:
+        with _research_jobs_lock:
+            _research_jobs[job_id].update(state="failed", error="Could not start the research worker.")
+        _compute_slot.release()
+        raise HTTPException(503, "Could not start the research worker.") from error
+    return {"job_id": job_id, "state": "queued"}
+
+
+@app.get("/api/research/jobs/{job_id}")
+def research_job(job_id: str):
+    import copy
+    with _research_jobs_lock:
+        if job_id in _research_jobs:
+            return copy.deepcopy(_research_jobs[job_id])
+    saved = read_record("reports", job_id)
+    if saved is None:
+        raise HTTPException(404, "Research job not found.")
+    return saved
+
+
+class SimulationRequest(BaseModel):
+    period_days: float = Field(300, ge=0.5, le=100_000, allow_inf_nan=False)
+    damping: float = Field(0.05, ge=0, le=2, allow_inf_nan=False)
+    drive: float = Field(0.15, ge=0, le=2, allow_inf_nan=False)
+    nonlinearity: float = Field(0.2, ge=0, le=4, allow_inf_nan=False)
+    cycles: int = Field(6, ge=1, le=40)
+    steps_per_cycle: int = Field(200, ge=64, le=1000)
+
+
+@app.post("/api/simulation")
+def simulation(request: SimulationRequest):
+    if not _compute_slot.acquire(blocking=False):
+        raise HTTPException(409, "A compute experiment is already running. Wait for its measured results.")
+    try:
+        from .research import simulate_pulsation
+        return simulate_pulsation(**request.model_dump())
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error
+    finally:
+        _compute_slot.release()

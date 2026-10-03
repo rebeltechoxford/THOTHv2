@@ -1,21 +1,20 @@
-# THOTHv2 · Mira Observatory
+# THOTHv2 · Mira Research Lab
 
-Jesse Sullivan's 2017 C/Python experiment grew up: C++ now does the numerical astronomy, Python coordinates the work and displays the findings, and MPI carries the same work onto a Beowulf cluster.
+Jesse Sullivan's 2017 C/Python experiment grew up: C++ does numerical astronomy, Python coordinates the experiments and prepares their results, and a compiled TypeScript interface lets you study them from your phone. MPI carries the same native work onto a Beowulf cluster.
 
-**A working research explorer and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, native weighted Fourier period fitting, an interactive sky map, and a compute lab that compares the same real workload in serial and across local worker processes.
+**A working research lab and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, native weighted Fourier fitting, hypothesis comparisons, residual and cadence diagnostics, conditional observation planning, and a nonlinear numerical sandbox. The compute lab measures the same real workload in serial and across worker processes.
 
 ## Start the observatory
 
-Requires Python 3.10+ and a C++17 compiler. On Windows install Visual Studio C++ Build Tools and a Windows SDK; on Linux install `g++` and Python development headers. macOS uses Xcode Command Line Tools and defaults to a serial native build.
+Requires Node.js 22.12+, Python 3.10+ and a C++17 compiler. On Windows install Visual Studio C++ Build Tools and a Windows SDK; on Linux install `g++` and Python development headers. macOS uses Xcode Command Line Tools and defaults to a serial native build.
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-thoth serve
+./scripts/start-lab.ps1
 ```
 
-Linux/macOS activation: `source .venv/bin/activate`. Open **http://127.0.0.1:8765**. Windows users whose compiler is not automatically discovered can use `scripts/start.ps1`; it loads the installed compiler environment, builds, and starts the explorer. `THOTH_OPENMP=0` disables OpenMP when a compiler lacks its runtime.
+The launcher builds TypeScript and C++, then serves on **http://localhost:8765** and your private LAN address for your phone. After the first build use `./scripts/start-lab.ps1 -SkipBuild`. [Internal run guide](docs/INTERNAL_RUN.md) covers phone access, development, and optional final Docker packaging. Docker is not required for development or this workstation. `THOTH_OPENMP=0` disables OpenMP when a compiler lacks its runtime.
+
+On Linux/macOS: run `npm ci && npm run build` inside `frontend/`, then create a virtual environment, activate it with `source .venv/bin/activate`, install with `python -m pip install -e '.[dev]'`, and run `thoth serve --host 0.0.0.0`. Bind to `127.0.0.1` for access only on the server.
 
 The complete catalog and two real light curves are bundled for offline use. Other OGLE curves are fetched on selection and cached locally. Stars without a supported photometry archive show their catalog details and an explicit availability message. No simulated observations replace missing data. All frontend charts work without a CDN.
 
@@ -24,6 +23,9 @@ The complete catalog and two real light curves are bundled for offline use. Othe
 - Search all five bundled source lists, filter period/catalog/region, sort records and export CSV.
 - Inspect J2000 sky coordinates, published periods, I/V magnitudes, I amplitudes, spectral types where supplied, and source provenance.
 - Plot actual observed magnitude versus HJD, fit periods in C++, inspect the frequency search, and phase-fold the data against a fitted Fourier curve.
+- Run **Discovery Lab** on measured photometry: compare one-, two- and three-harmonic hypotheses against later observations, inspect residuals and separated peaks, compute the actual cadence window, and compare early/late fits. Conditional observation suggestions rank where competing fitted periods disagree.
+- Import your own single-band CSV with explicit JD/HJD/BJD times. Measurements and completed research reports persist in the local workspace, with source hashes and an auditable compute budget.
+- Explore **Pulsation Sandbox**: change forcing, damping, nonlinearity and resolution, animate normalized displacement and phase trajectories, and inspect native RK4 step refinement and energy-balance diagnostics. This is an illustrative nonlinear oscillator, not calibrated stellar physics.
 - Run the **Compute Lab**: deterministic bootstrap tasks on real observations, a measured serial baseline, multiprocess execution, worker telemetry, speedup and efficiency.
 - Explore Amdahl's and Gustafson's theoretical scaling separately from measured performance, then run MPI jobs on actual cluster nodes.
 
@@ -38,6 +40,9 @@ The fitter solves a floating-mean, weighted Fourier model at each frequency. It 
 ```console
 thoth analyze --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --samples 1500 --output outputs/mira-fit.json
 thoth analyze --input observations.csv --band I --min-period 100 --max-period 800 --output outputs/custom-fit.json
+thoth research --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --samples 800 --output outputs/evidence.json
+thoth research --input observations.csv --band I --time-system BJD --min-period 100 --max-period 800 --output outputs/custom-evidence.json
+thoth simulate --damping 0.05 --drive 0.15 --nonlinearity 0.2 --steps-per-cycle 200 --output outputs/oscillator.json
 thoth catalog-info
 thoth refresh-catalog --output outputs/new-snapshot
 ```
@@ -64,6 +69,12 @@ python -m build
 ```
 
 Tests cover native period recovery with irregular observations, weighted fitting, independent SVD coefficient validation, catalog parsing and counts, real offline photometry, API errors and exports, and worker consistency. CI builds on Linux and Windows and exercises MPI on Linux.
+
+Research tests also check chronological model selection, candidate predictions, sampling windows against a direct calculation, analytic harmonic-oscillator behavior, fourth-order convergence and forced/damped energy accounting. TypeScript must pass strict checking before the production build; optional Docker CI builds and exercises the actual packaged runtime.
+
+## Investigating unknowns
+
+THOTH can identify competing explanations, show where models fail, and rank conditional measurements that could help distinguish them. It cannot guarantee resolution of every unknown, infer unobserved stellar properties from a sparse light curve, or claim discoveries without external validation. [Research methods](docs/RESEARCH.md) explain every computed diagnostic and its limits. [Vision and roadmap](docs/VISION.md) separate today's working lab from future physical inference and distributed research.
 
 ## Origins
 

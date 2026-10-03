@@ -1,7 +1,11 @@
 include README.md
-recursive-include native *.cpp
+recursive-include native *.cpp *.hpp
 recursive-include docs *.md
 recursive-include examples *.py *.slurm *.txt
-recursive-include scripts *.ps1
+recursive-include scripts *.ps1 *.py
 recursive-include src/thoth/data *.json *.gz *.dat
 recursive-include src/thoth/web *.html *.css *.js
+include frontend/package.json frontend/package-lock.json frontend/tsconfig.json frontend/vite.config.mjs
+recursive-include frontend/src *.ts *.css
+include frontend/index.html Dockerfile compose.yaml .dockerignore
+include frontend/README.md

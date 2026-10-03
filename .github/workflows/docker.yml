@@ -1,0 +1,27 @@
+name: Container build and real compute
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  internal-observatory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate internal deployment settings
+        run: docker compose config --quiet
+      - name: Build TypeScript, Python wheel, and native C++ kernel
+        run: docker compose build --pull
+      - name: Start the internal observatory and check readiness
+        run: docker compose up --detach --wait --wait-timeout 120
+      - name: Exercise packaged UI, native science, processes, and MPI
+        run: docker compose exec -T observatory python scripts/docker-smoke.py --mpi
+      - name: Container diagnostics
+        if: always()
+        run: docker compose ps && docker compose logs --tail=120
+      - name: Stop CI containers
+        if: always()
+        run: docker compose down --volumes

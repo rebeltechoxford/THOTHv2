@@ -1,0 +1,37 @@
+name: thothv2
+services:
+  observatory:
+    build:
+      context: .
+      target: runtime
+    image: thothv2:local
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${THOTH_BIND:-0.0.0.0}:${THOTH_PORT:-8765}:8765"
+    environment:
+      THOTH_CACHE_DIR: /var/lib/thoth/cache
+      THOTH_WORKSPACE_DIR: /var/lib/thoth/cache/workspace
+      OMP_NUM_THREADS: "${THOTH_NATIVE_THREADS:-4}"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    cpus: "${THOTH_CPUS:-4.0}"
+    mem_limit: "${THOTH_MEMORY:-2g}"
+    pids_limit: 256
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m,mode=1777
+    volumes:
+      - photometry-cache:/var/lib/thoth/cache
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  photometry-cache:

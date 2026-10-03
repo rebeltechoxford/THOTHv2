@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import math
 from pathlib import Path
 from typing import Any
@@ -18,8 +19,15 @@ def native_status() -> dict:
 
 def read_observations_csv(path: Path) -> dict:
     """CSV uses explicit time_jd, magnitude, error_mag and optional band."""
+    result = read_observations_text(path.read_text(encoding="utf-8-sig"))
+    result["source_url"] = str(path.resolve())
+    return result
+
+
+def read_observations_text(text: str, *, default_band: str = "unspecified") -> dict:
+    """Use the same numerical validation for CLI files and browser imports."""
     observations = []
-    with path.open(encoding="utf-8-sig", newline="") as handle:
+    with io.StringIO(text.lstrip("\ufeff"), newline="") as handle:
         reader = csv.DictReader(handle)
         required = {"time_jd", "magnitude", "error_mag"}
         if not required.issubset(reader.fieldnames or []):
@@ -29,13 +37,13 @@ def read_observations_csv(path: Path) -> dict:
                 obs = {key: float(row[key]) for key in required}
                 if not all(math.isfinite(v) for v in obs.values()) or obs["error_mag"] <= 0:
                     raise ValueError("non-finite value or nonpositive uncertainty")
-                obs["band"] = (row.get("band") or "unspecified").strip()
+                obs["band"] = (row.get("band") or default_band).strip()
                 observations.append(obs)
             except (ValueError, TypeError) as error:
                 raise ValueError(f"Invalid observation on CSV line {line}: {error}") from error
             if len(observations) > 200_000:
                 raise ValueError("At most 200,000 observations per analysis are supported.")
-    return {"observations": observations, "source_url": str(path.resolve()),
+    return {"observations": observations, "source_url": "user supplied",
             "time_system": "User-supplied JD (verify your time standard)", "band": "user supplied"}
 
 
