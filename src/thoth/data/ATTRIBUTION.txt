@@ -1,0 +1,34 @@
+THOTHv2 Mira research snapshot — third-party scientific measurements
+
+Source-specific papers, exact archive URLs, retrieval UTC dates and checksums
+are preserved in manifest.json. Complete source documentation and scientific
+interpretation are in docs/SOURCES.md in the repository.
+
+OGLE Galactic bulge/disk:
+Iwanek et al. (2022), The OGLE Collection of Variable Stars. Nearly 66,000 Mira
+Stars in the Milky Way, The Astrophysical Journal Supplement Series 260, 46.
+https://arxiv.org/abs/2203.16552
+
+OGLE Large Magellanic Cloud:
+Soszynski et al. (2009), Acta Astronomica 59, 239.
+https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/lmc/lpv/
+
+OGLE Small Magellanic Cloud:
+Soszynski et al. (2011), Acta Astronomica 61, 217.
+https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/smc/lpv/
+
+GCVS:
+N. N. Samus, E. V. Kazarovets, O. V. Durlevich, N. N. Kireeva, and
+E. N. Pastukhova (2017), General Catalogue of Variable Stars: Version GCVS 5.1,
+Astronomy Reports 61, 80–88.
+https://cdsarc.cds.unistra.fr/viz-bin/cat/B/gcvs
+
+VizieR/CDS:
+Ochsenbein, Bauer, and Marcout (2000), A&AS 143, 23.
+CDS, Strasbourg, France. Service DOI: https://doi.org/10.26093/cds/vizier
+Scientific use and attribution policy:
+https://cds.unistra.fr/vizier-org/licences_vizier.html
+
+Cite the corresponding OGLE and GCVS papers in scientific presentations and
+publications. The source data retain their original attribution and usage
+conditions; THOTH's software license does not relicense these measurements.

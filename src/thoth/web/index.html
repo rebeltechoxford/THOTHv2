@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d17">
+  <meta name="description" content="THOTH is a Mira variable star observatory: explore published catalogues and analyze real light curves with a native C++ engine.">
+  <title>THOTH · Mira Observatory</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/lab.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#observatory" aria-label="THOTH Mira Observatory home">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 35 12v16L20 37 5 28V12Z"/><path d="M20 8v24M10 14h20M13 27l7-15 7 15M16 22h8"/></svg>
+      <span>THOTH<span class="brand-subtitle">MIRA OBSERVATORY</span></span>
+    </a>
+    <nav aria-label="Main navigation"><a href="#observatory" class="active">Observatory</a><a href="#catalogue">Catalogue</a><a href="#compute-lab">Compute lab</a><a href="#methods">The science</a></nav>
+    <span class="engine-badge" id="engine-status"><span class="status-dot"></span>Connecting to engine</span>
+  </header>
+  <main id="observatory">
+    <section class="hero">
+      <div><p class="eyebrow"><span class="tiny-star">✦</span> A WINDOW INTO THE VARIABLE UNIVERSE</p><h1>The sky is <em>never still.</em></h1><p class="hero-copy">Explore Mira variable stars. Find their rhythms in real observations.<br class="desktop-break"> Let C++ do the math, and Python bring the sky into view.</p><a class="hero-lab-link" href="#compute-lab">Explore the Beowulf compute lab <span aria-hidden="true">↗</span></a></div>
+      <div class="hero-orbit" aria-hidden="true"><div class="orbit-ring ring-one"></div><div class="orbit-ring ring-two"></div><div class="orbit-star"></div><span class="orbit-label">PULSATING RED GIANTS</span></div>
+    </section>
+    <section class="metrics" aria-label="Catalogue summary">
+      <div class="metric"><span class="metric-label">CATALOGUE RECORDS</span><strong id="metric-stars">—</strong><span class="metric-note">Published Mira classifications</span></div>
+      <div class="metric"><span class="metric-label">WITH MEASURED PERIODS</span><strong id="metric-periods">—</strong><span class="metric-note">A rhythm we can study</span></div>
+      <div class="metric"><span class="metric-label">MEDIAN PERIOD</span><strong id="metric-median">—</strong><span class="metric-note">Days per variability cycle</span></div>
+      <div class="metric"><span class="metric-label">SOURCE CATALOGUES</span><strong id="metric-catalogues">—</strong><span class="metric-note" id="metric-source-note">OGLE · GCVS</span></div>
+    </section>
+    <div class="coverage-note" id="coverage-note"><span aria-hidden="true">ⓘ</span><span>Loading the published catalogue inventory…</span></div>
+    <section class="overview-grid" aria-label="Catalogue visualizations">
+      <article class="card sky-card">
+        <div class="card-heading"><div><p class="eyebrow">EQUATORIAL COORDINATES</p><h2>A map of changing stars</h2></div><span class="subtle-pill" id="sky-count">Loading sky</span></div>
+        <div class="sky-map" id="sky-map"><canvas id="sky-canvas" aria-label="Mira star sky map. Select a star in the catalogue table for an accessible alternative."></canvas><div class="sky-tooltip" id="sky-tooltip" hidden></div></div>
+        <div class="chart-caption"><span><i class="legend-dot cyan"></i>Published Mira positions <i class="legend-dot amber"></i>Selected star</span><span>Click a point to explore · RA increases left</span></div>
+      </article>
+      <article class="card distribution-card">
+        <div class="card-heading"><div><p class="eyebrow">PERIOD DISTRIBUTION</p><h2>Every star has a rhythm</h2></div><span class="chart-unit">days</span></div>
+        <div id="period-distribution" class="distribution-chart"><p class="empty-message">Gathering periods…</p></div>
+        <p class="chart-caption" id="distribution-note">Published catalogue periods, in days.</p>
+      </article>
+    </section>
+    <section class="catalogue-section" id="catalogue">
+      <div class="section-heading"><div><p class="eyebrow">FIND YOUR NEXT STAR</p><h2>The Mira catalogue <span id="result-count" class="count-label"></span></h2></div><div class="section-actions"><a id="catalogue-export" href="/api/export/catalog" class="export-button">Export CSV ↓</a><a href="#methods" class="text-link">How to read the data <span aria-hidden="true">↗</span></a></div></div>
+      <div class="filter-bar">
+        <label class="search-control"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><input id="search" type="search" placeholder="Search a name or catalogue ID…" aria-label="Search star name or catalogue ID" autocomplete="off"></label>
+        <label class="filter-control"><span>Catalogue</span><select id="catalog-filter" aria-label="Filter by catalogue"><option value="">All catalogues</option></select></label>
+        <label class="filter-control"><span>Region</span><select id="region-filter" aria-label="Filter by sky region"><option value="">All regions</option></select></label>
+        <fieldset class="period-filter"><legend>Period / days</legend><input id="min-period" type="number" min="0" step="1" placeholder="Min" aria-label="Minimum period in days"><span>–</span><input id="max-period" type="number" min="0" step="1" placeholder="Max" aria-label="Maximum period in days"></fieldset>
+        <button class="reset-button" id="reset-filters" title="Reset catalogue filters">Reset</button>
+      </div>
+      <div class="research-grid">
+        <article class="card catalogue-card">
+          <div class="table-scroll"><table><thead><tr><th><button class="sort-button" data-sort="name">STAR <span aria-hidden="true"></span></button></th><th><button class="sort-button" data-sort="period_days">PERIOD <span aria-hidden="true">↓</span></button></th><th><button class="sort-button" data-sort="mean_i_mag">I MAG <span aria-hidden="true"></span></button></th><th><button class="sort-button" data-sort="amplitude_i_mag">I AMP <span aria-hidden="true"></span></button></th><th>SOURCE</th></tr></thead><tbody id="star-table"><tr><td colspan="5" class="table-empty">Opening the observatory…</td></tr></tbody></table></div>
+          <div class="pagination"><span id="page-label">Loading records</span><div><button id="prev-page" aria-label="Previous catalogue page" disabled>←</button><span id="page-number">1</span><button id="next-page" aria-label="Next catalogue page" disabled>→</button></div></div>
+          <p class="table-footnote">Magnitudes: smaller values are brighter. Missing measurements are shown as —.</p>
+        </article>
+        <aside class="card star-inspector" id="star-inspector" aria-label="Selected star details"><p class="eyebrow">UNDER THE TELESCOPE</p><div id="star-detail"><div class="inspector-empty"><span aria-hidden="true">✧</span><h3>A star, waiting to be explored.</h3><p>Select a catalogue record or a point on the sky map.</p></div></div></aside>
+      </div>
+    </section>
+    <section class="analysis-section" id="analysis-section" hidden>
+      <div class="section-heading"><div><p class="eyebrow">FROM PHOTONS TO PATTERNS</p><h2>Follow the light <span class="count-label" id="analysis-star-name"></span></h2></div><span class="data-badge"><span class="status-dot"></span>Real observed photometry</span></div>
+      <div id="lightcurve-notice" class="notice" hidden></div>
+      <div class="lightcurve-grid">
+        <article class="card chart-card"><div class="card-heading"><div><p class="eyebrow">OBSERVED LIGHT CURVE</p><h3>Brightness through time</h3></div><span class="subtle-pill" id="observation-count">— observations</span></div><div id="observed-chart" class="science-chart"><p class="empty-message">Loading observations…</p></div><p class="chart-caption" id="observed-caption">Observation times and magnitudes retain the source conventions.</p></article>
+        <article class="card chart-card"><div class="card-heading"><div><p class="eyebrow">PHASE-FOLDED LIGHT CURVE</p><h3>One rhythm, many cycles</h3></div><span class="subtle-pill amethyst" id="folded-period">Awaiting fit</span></div><div id="folded-chart" class="science-chart"><div class="chart-placeholder"><svg viewBox="0 0 120 42" aria-hidden="true"><path d="M2 23C12 23 14 4 27 4S41 38 53 38 65 4 78 4 90 38 103 38 113 25 118 23"/></svg><p>Run a native period search<br>to bring the cycles together.</p></div></div><p class="chart-caption"><span><i class="legend-dot cyan"></i>Observations <i class="legend-line"></i>Empirical Fourier fit</span><span>Two cycles shown</span></p></article>
+      </div>
+      <article class="card periodogram-card" id="periodogram-card" hidden><div class="card-heading"><div><p class="eyebrow">NATIVE C++ PERIOD SEARCH</p><h3>The strongest candidate rhythm</h3></div><span class="subtle-pill" id="fit-backend">C++ · weighted least squares</span></div><div id="fit-metrics" class="fit-metrics"></div><div id="periodogram-chart" class="periodogram-chart"></div><p class="chart-caption" id="fit-caption">Period estimates depend on the observation cadence and the search range. Inspect nearby peaks and aliases.</p></article>
+    </section>
+    <section class="compute-section" id="compute-lab">
+      <div class="section-heading"><div><p class="eyebrow">MANY WORKERS. ONE SKY.</p><h2>The Beowulf compute lab</h2></div><span class="data-badge"><span class="status-dot"></span>Real workloads · measured scaling</span></div>
+      <p class="lab-intro">A cluster begins with an idea: divide a scientific problem into independent pieces. Run the same native C++ period searches in series and across local worker processes, then see where parallel computing helps—and where its overhead wins.</p>
+      <div class="compute-grid">
+        <article class="card workload-card"><div class="card-heading"><div><p class="eyebrow">THE EXPERIMENT</p><h3>How much faster is parallel?</h3></div><span class="subtle-pill">Measured photometry</span></div><div class="lab-card-body"><div class="pipeline"><span>Real light curve<small>Python coordinator</small></span><b aria-hidden="true">→</b><span>Bootstrap tasks<small>Native C++ fits</small></span><b aria-hidden="true">→</b><span>Compare timings<small>Observed speedup</small></span></div><p class="lab-description">Each task resamples real observations and repeats the period search. A serial baseline runs the same tasks first; a process pool then distributes them across workers. The result is a resampling distribution and a measured scaling experiment.</p><form id="cluster-form"><label class="lab-star-label">Workload star <select id="cluster-star"><option value="">Bundled OGLE example</option></select></label><div class="cluster-controls"><label>Worker processes<select id="cluster-workers"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option></select></label><label>Bootstrap tasks<select id="cluster-tasks"><option>4</option><option>8</option><option selected>12</option><option>24</option><option>48</option></select></label></div><button class="fit-button lab-run-button" id="cluster-run" type="submit"><span aria-hidden="true">⚡</span> Run the scaling experiment</button></form><p class="fit-footnote">Local workers are processes on this computer, not separate physical cluster nodes. Timings include orchestration and process startup. Speedup can be below 1×.</p></div></article>
+        <article class="card execution-card"><div class="card-heading"><div><p class="eyebrow">LIVE EXECUTION</p><h3 id="cluster-heading">Ready when you are</h3></div><span class="subtle-pill" id="cluster-state">Idle</span></div><div class="lab-card-body"><div class="cluster-progress"><div id="cluster-progress-bar"></div></div><div class="cluster-progress-label"><span id="cluster-progress-text">One serial baseline. One parallel run.</span><span id="cluster-progress-percent">0%</span></div><div class="task-grid" id="task-grid" aria-label="Bootstrap task progress"></div><div id="cluster-results" hidden><div class="cluster-metrics" id="cluster-metrics"></div><div id="ensemble-chart" class="ensemble-chart"></div><p class="fit-footnote" id="cluster-result-note"></p></div><p class="lab-description" id="cluster-idle-copy">Watch task completions here, then compare the serial and parallel timings. The native engine does the fitting in every worker; Python coordinates and collects the results.</p><div id="cluster-error" class="notice" hidden></div></div></article>
+      </div>
+      <article class="card theory-card"><div class="card-heading"><div><p class="eyebrow">BEFORE YOU BUILD A CLUSTER</p><h3>The theory behind the speedup</h3></div><span class="subtle-pill amethyst">Theoretical model</span></div><div class="theory-body"><div class="theory-controls"><label>Parallel fraction <strong id="parallel-fraction-label">95%</strong><input id="parallel-fraction" type="range" min="0" max="100" step="0.1" value="95"><span>How much of the work can run concurrently?</span></label><label>Processors <strong id="processor-label">16</strong><input id="processor-count" type="range" min="1" max="128" step="1" value="16"><span>The number of ideal, identical processors.</span></label><div class="theory-equations"><div><span>AMDAHL · STRONG SCALING</span><strong id="amdahl-speedup">9.14×</strong><code>S = 1 / ((1 − p) + p / N)</code><p>A fixed problem, divided among more processors. Serial work sets a speed limit.</p></div><div><span>GUSTAFSON · WEAK SCALING</span><strong id="gustafson-speedup">15.25×</strong><code>G = N − (1 − p)(N − 1)</code><p>A larger problem as processors increase, with the serial part held fixed.</p></div></div></div><div class="theory-visual"><div id="scaling-chart" class="scaling-chart"></div><p class="chart-caption"><span><i class="legend-dot cyan"></i>Amdahl <i class="legend-dot purple"></i>Gustafson <i class="legend-dot muted"></i>Ideal</span><span>Predicted speedup ×</span></p><p class="theory-caveat">These formulas assume idealized work distribution. They do not include communication, memory contention, uneven tasks, or startup costs. Compare the predictions with your measured run above.</p></div></div><div class="mpi-note"><span class="mpi-mark" aria-hidden="true">⌘</span><div><strong>From a laptop to a Beowulf cluster</strong><p>The same independent bootstrap workload can use MPI ranks across real machines. Python distributes work; each rank calls the native C++ engine. Use a scheduler or hostfile to place ranks on your cluster. <a class="text-link" href="https://github.com/rebeltechoxford/THOTHv2/blob/main/docs/CLUSTER.md" target="_blank" rel="noopener noreferrer">Read the cluster guide ↗</a></p><code>mpiexec -n 4 python -m thoth.cluster --mpi --star OGLE-BLG-LPV-096697 --workers 1 --tasks 24 --output outputs/cluster.json</code></div></div></article>
+    </section>
+    <section class="science-note" id="methods">
+      <div class="science-symbol" aria-hidden="true">✦</div><div><p class="eyebrow">A SMALL OBSERVATORY. A BIG QUESTION.</p><h2>What can a changing star tell us?</h2><p>Mira variables are pulsating, evolved giants with long brightness cycles. THOTH brings published catalogue records and real photometry together so you can inspect those cycles, search for periods, and compare an empirical model with the observations.</p><details><summary>About the catalogues and the math <span aria-hidden="true">+</span></summary><div class="method-details"><p>Catalogue records retain their published classifications and identifiers. OGLE regions and GCVS records can overlap; the record count is not a count of unique stars or a complete census of every known Mira. Missing values remain missing. Positions are in degrees; periods are in days; I and V refer to photometric bands.</p><p>The native C++ engine fits a weighted Fourier series over candidate frequencies and returns the best period within your search interval. Python serves the catalogue and coordinates the analysis. The displayed curve describes the observed variability; it is not a physical stellar evolution or pulsation simulation. Sparse sampling, aliases, changing periods, bandpass, and underestimated errors can all affect a fit.</p><p>Photometry availability varies by record. The bundled demonstration uses a real OGLE Mira light curve; source links lead to the published data. THOTH does not infer distances, temperatures, masses, or radii from a catalogue magnitude.</p></div></details></div>
+    </section>
+  </main>
+  <footer><a class="footer-brand" href="#observatory">THOTH <span>v2</span></a><p>C++ for the math. Python for the view. Curiosity for everything else.</p><span>MIRA OBSERVATORY <span aria-hidden="true">✦</span></span></footer>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>
+
+

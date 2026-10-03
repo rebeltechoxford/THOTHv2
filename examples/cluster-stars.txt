@@ -1,0 +1,3 @@
+# Both of these measured OGLE curves are bundled, so this job works offline.
+OGLE-BLG-LPV-096697
+OGLE-LMC-LPV-04312

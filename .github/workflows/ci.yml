@@ -1,0 +1,34 @@
+name: Native science and cluster validation
+on:
+  push:
+  pull_request:
+jobs:
+  science:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest
+      - run: python -m build --wheel
+  mpi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y openmpi-bin libopenmpi-dev
+      - run: python -m pip install -e ".[dev,cluster]"
+      - run: mpiexec -n 2 python -m thoth.cluster --mpi --star OGLE-BLG-LPV-096697 --workers 1 --tasks 4 --samples 100 --observations-limit 300 --output outputs/mpi-experiment.json
+      - run: mpiexec -n 2 thoth batch --mpi --ids examples/cluster-stars.txt --samples 100 --output outputs/mpi-batch.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mpi-science-results
+          path: outputs/

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+  "catalog_entries": 75916,
+  "counts_by_catalog": {
+    "OGLE BLG": 40356,
+    "OGLE GD": 25625,
+    "OGLE LMC": 1663,
+    "OGLE SMC": 352,
+    "GCVS": 7920
+  },
+  "snapshot_sha256": "5ad4285f0fa9687b6a4f0ae7e4f35af7003a71d7d44be0feb44d9ae3366458d5",
+  "coordinate_system": "J2000",
+  "sources": [
+    {
+      "catalog": "OGLE BLG",
+      "region": "Galactic bulge",
+      "url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/blg/lpv/",
+      "parameter_url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/blg/lpv/Miras.dat",
+      "identifier_url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/blg/lpv/ident.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "upstream_mira_rows": 40356,
+      "upstream_identifier_rows": 40356,
+      "parameters_sha256": "48acc7f5c2618a0ea24c94fea95a72e7261ea375f37c740613870626b5a26493",
+      "identifiers_sha256": "b12ad95404c156f2323cb5ceadcce3ba4123f8dca48020d89b335a869db394c2",
+      "reference": "Iwanek et al. 2022, ApJS 260, 46; 2022ApJS..260...46I"
+    },
+    {
+      "catalog": "OGLE GD",
+      "region": "Galactic disk",
+      "url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/gd/lpv/",
+      "parameter_url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/gd/lpv/Miras.dat",
+      "identifier_url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/gd/lpv/ident.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "upstream_mira_rows": 25625,
+      "upstream_identifier_rows": 25625,
+      "parameters_sha256": "ac6689e2ee01ca4dc46fb347ce49077057a3e4f909ec2c95e5372ac9021340df",
+      "identifiers_sha256": "d33197fd21e3bbb4ca2937c3411a88a65bf4e74ffc308ac6acd69df1ece692a2",
+      "reference": "Iwanek et al. 2022, ApJS 260, 46; 2022ApJS..260...46I"
+    },
+    {
+      "catalog": "OGLE LMC",
+      "region": "Large Magellanic Cloud",
+      "url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/lmc/lpv/",
+      "parameter_url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/lmc/lpv/Miras.dat",
+      "identifier_url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/lmc/lpv/ident.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "upstream_mira_rows": 1663,
+      "upstream_identifier_rows": 91995,
+      "parameters_sha256": "da35be205078fb3ac305af386bb5b7b2c9a494b729b0c9a169b7b5490de6b334",
+      "identifiers_sha256": "ff91a58b53ebf74a528f0aa7a3623630f531daee535a91c89e138d18eabf44f5",
+      "reference": "Soszynski et al. 2009, Acta Astron. 59, 239; 2009AcA....59..239S"
+    },
+    {
+      "catalog": "OGLE SMC",
+      "region": "Small Magellanic Cloud",
+      "url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/smc/lpv/",
+      "parameter_url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/smc/lpv/Miras.dat",
+      "identifier_url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/smc/lpv/ident.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "upstream_mira_rows": 352,
+      "upstream_identifier_rows": 19384,
+      "parameters_sha256": "1ba8923bbbf93e92eb1c10740ba2f9f9048e5a86d496ab11d5caf588fd8be718",
+      "identifiers_sha256": "eee90c74fac5eabc36e6885bc6b01c40368851c46b3d9d2737b0424931241d0f",
+      "reference": "Soszynski et al. 2011, Acta Astron. 61, 217; 2011AcA....61..217S"
+    },
+    {
+      "catalog": "GCVS",
+      "url": "https://cdsarc.cds.unistra.fr/viz-bin/cat/B/gcvs",
+      "query_url": "https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=B%2Fgcvs%2Fgcvs_cat&VarType=M&-out.max=unlimited&-out=GCVS%2CRAJ2000%2CDEJ2000%2CVarType%2CmagMax%2CMin1%2Cflt%2CEpoch%2CPeriod%2CSpType%2Cl_magMax%2Cu_magMax%2Cl_Min1%2Cu_Min1%2Cn_Min1%2Cl_Period%2Cu_Period%2Cu_Epoch%2CExists",
+      "selection": "VarType exactly M",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "upstream_mira_rows": 7920,
+      "response_sha256": "969ecd15b0bba238e1c898232bf321f6f513a49a81aa0a0e411afebc051a8a26",
+      "reference": "Samus et al. 2017, Astronomy Reports 61, 80; 2017ARep...61...80S",
+      "upstream_table_label": "GCVS 5.1, version Oct, 2020 (VizieR table label; service has subsequent updates)"
+    }
+  ],
+  "bundled_lightcurves": {
+    "OGLE-BLG-LPV-096697": {
+      "file": "OGLE-BLG-LPV-096697.dat",
+      "source_url": "https://www.astrouw.edu.pl/ogle/ogle4/OCVS/blg/lpv/phot_ogle4/I/OGLE-BLG-LPV-096697.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "observations": 8369,
+      "band": "I",
+      "time_system": "HJD",
+      "raw_time_offset_days": 2450000,
+      "sha256": "d80eccb763fcf56db7f8202fd322ed3392e84ac0a8d6784c395ae2d2c6f9fc62"
+    },
+    "OGLE-LMC-LPV-04312": {
+      "file": "OGLE-LMC-LPV-04312.dat",
+      "source_url": "https://ftp.astrouw.edu.pl/ogle/ogle3/OIII-CVS/lmc/lpv/phot/I/OGLE-LMC-LPV-04312.dat",
+      "retrieved_utc": "2026-10-03T09:48:56.741354Z",
+      "observations": 465,
+      "band": "I",
+      "time_system": "HJD",
+      "raw_time_offset_days": 2450000,
+      "sha256": "16e76b8ff1e2c6d2cb7161ac2005079c5f30520066b59cdc13a747e6d70c1e55"
+    }
+  },
+  "coverage": "Complete Mira tables from the four listed OGLE releases plus the unlimited exact-M GCVS query. This is not every known Mira in all surveys.",
+  "identity": "Entries from different catalogs are kept distinct; their sky overlap means entry counts are not unique-star counts.",
+  "missing_data": "Unavailable numbers remain null. GCVS maxima/minima are not intensity means; no distance, mass, radius or luminosity is inferred.",
+  "photometry": "OGLE I-band archive observations; raw HJD-2450000 is converted to full HJD. Light curves beyond the two bundled examples download on demand."
+}
