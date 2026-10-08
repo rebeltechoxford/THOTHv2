@@ -64,6 +64,13 @@ standard, source URL and SHA-256 of the complete selected-band observations.
 Immutable measurement tuples and period bounds identify the reusable fit;
 scrubbing the three-dimensional model phase does not rerun the period search.
 
+The model view reports the period, reduced chi-square and used observation
+count. A large reduced chi-square means this periodic curve leaves residuals
+well above the reported photometric errors. Waveform underfit, cycle changes,
+outliers, measurement systematics or underestimated errors can contribute;
+this statistic alone cannot distinguish those causes. Examine residuals and
+evolving-period alternatives before interpreting the family physically.
+
 The fitted magnitude curve gives relative band flux:
 
 ```text
@@ -97,11 +104,16 @@ For the underlying radiance law and wavelength/frequency distinction, see
   relative flux variation.
 - Values between zero and one share the flux variation between the two.
 
-All these solutions can fit the same single-band light curve. Moving the
+All these solutions reproduce the same fitted single-band phase curve. Moving the
 radius/temperature split changes the three-dimensional star while preserving
 the reconstructed flux. That difference exposes an unresolved inverse problem
 and indicates why another calibrated band, spectroscopy or interferometry is
 valuable. It does not establish which model is physically correct.
+
+Radiative flux closure checks algebraic consistency with that fitted curve.
+It does not validate agreement with every observation or with the physical
+star. A tiny closure error can coexist with a poor photometric fit; the
+default demonstration star exhibits this distinction.
 
 The report also predicts relative monochromatic curves at V, I and K proxy
 wavelengths (`0.55`, `0.806`, `2.2 micrometers`). Each prediction uses the selected
