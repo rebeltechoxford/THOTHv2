@@ -313,6 +313,7 @@ function drawMap(kind: 'chirp' | 'local', grid: TransformGrid, rowValues: number
   ctx.textAlign = 'center';
   for (let tick = 0; tick <= 2; tick++) {
     const col = Math.round(tick/2*(grid.frequencies.length-1));
+    ctx.textAlign = tick === 0 ? 'left' : tick === 2 ? 'right' : 'center';
     ctx.fillText(fmt(grid.frequencies[col], 4), s.left+(col+.5)*cw, s.h-s.bottom+26);
     const row = Math.round(tick/2*(rowValues.length-1));
     ctx.textAlign = 'right';
