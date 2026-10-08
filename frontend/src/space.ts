@@ -17,6 +17,7 @@ interface GaiaCandidate { source_id: string; ra: number; dec: number; parallax: 
 interface GaiaEvidence { star_id: string; name: string; candidates: GaiaCandidate[]; candidate_count: number; archive: string; adql_query: string; response_sha256: string; retrieved_utc: string; source_url: string; caveats: string[]; association_status: string }
 interface DistancePosterior { distances_pc: number[]; density_per_pc: number[]; cumulative_probability: number[]; median_pc: number; p16_pc: number; p84_pc: number; mode_pc: number; prior_length_pc: number; lower_bound_pc?: number; upper_bound_pc?: number; model_kind: string; [key: string]: unknown }
 interface NativeSurface { mesh: { positions: number[]; indices: number[]; native_seconds?: number }; axes: Record<string, unknown>; caveats: string[] }
+type ClusterEvidence = ClusterResult & { star_id?: string; name?: string; band?: string; time_system?: string; source_url?: string };
 type View = 'sky' | 'density' | 'period' | 'distance' | 'star' | 'workers' | 'surface';
 const node = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -46,7 +47,7 @@ node('space-lab').innerHTML = `
       </div>
       <div class="space-options" id="space-map-options"><label>Coordinate frame<select id="space-frame"><option value="equatorial">Equatorial · RA / Dec</option><option value="galactic">Galactic · l / b</option></select></label><label class="space-check"><input id="space-grid" type="checkbox" checked>Coordinate grid</label><label class="space-check"><input id="space-groups" type="checkbox" checked>Survey centroids</label><label>Point size<input id="space-point-size" type="range" min="1" max="5" step=".25" value="2.25"></label><button id="space-export-sky" type="button" class="export-button">Geometry + sources JSON ↓</button></div>
       <div id="space-star-options" class="space-options" hidden><label>Cycle phase <strong id="space-phase-label">0.00</strong><input id="space-phase" type="range" min="0" max="1" step=".002" value="0"></label><label class="space-check"><input id="space-cutaway" type="checkbox">Reveal schematic layers</label><label class="space-check"><input id="space-wireframe" type="checkbox">Mesh edges</label><button id="space-model-fit" type="button" class="export-button">Infer from measured brightness</button></div>
-      <div id="space-inference" class="space-inference" hidden><h4>One light curve. A family of 3D explanations.</h4><p>The native radiative model partitions measured flux changes between normalized radius and temperature at your assumed reference temperature T₀. Compare conditional hypotheses that reproduce the same observed brightness. Further measurements are needed to identify which geometry describes the star.</p><div class="space-hypotheses" role="group" aria-label="Choose a conditional radiative hypothesis"><button type="button" data-radius-fraction="0" aria-pressed="false">Fixed radius<br>Changing temperature</button><button type="button" data-radius-fraction="0.5" aria-pressed="true">Mixed<br>Radius + temperature</button><button type="button" data-radius-fraction="1" aria-pressed="false">Fixed temperature<br>Changing radius</button></div><label class="space-inference-slider">Fraction of flux change assigned to radius <strong id="space-radius-fraction-label">0.50</strong><input id="space-radius-fraction" type="range" min="0" max="1" step=".05" value=".5"></label><label class="space-reference-temperature">Assumed reference temperature T₀ / K<input id="space-reference-temperature" type="number" min="1500" max="10000" step="50" value="3000"></label><div class="space-radiative-metrics"><span>CONDITIONAL RADIUS / R₀<strong id="space-radiative-radius">—</strong></span><span>CONDITIONAL T / K<strong id="space-radiative-temperature">—</strong></span><span>RECONSTRUCTED FLUX / F₀<strong id="space-radiative-flux">—</strong></span></div><div id="space-inference-chart"></div><p id="space-inference-status">Select a star and infer from available photometry to build this family.</p></div>
+      <div id="space-inference" class="space-inference" hidden><h4>One light curve. A family of 3D explanations.</h4><p>The native radiative model partitions measured flux changes between normalized radius and temperature at your assumed reference temperature T₀. Compare conditional hypotheses that reproduce the same observed brightness. Further measurements are needed to identify which geometry describes the star.</p><div class="space-hypotheses" role="group" aria-label="Choose a conditional radiative hypothesis"><button type="button" data-radius-fraction="0" aria-pressed="false">Fixed radius<br>Changing temperature</button><button type="button" data-radius-fraction="0.5" aria-pressed="true">Mixed<br>Radius + temperature</button><button type="button" data-radius-fraction="1" aria-pressed="false">Fixed temperature<br>Changing radius</button></div><label class="space-inference-slider">Fraction of flux change assigned to radius <strong id="space-radius-fraction-label">0.50</strong><input id="space-radius-fraction" type="range" min="0" max="1" step=".05" value=".5"></label><label class="space-reference-temperature">Assumed reference temperature T₀ / K<input id="space-reference-temperature" type="number" min="1500" max="10000" step="any" value="3000" required></label><div class="space-radiative-metrics"><span>CONDITIONAL RADIUS / R₀<strong id="space-radiative-radius">—</strong></span><span>CONDITIONAL T / K<strong id="space-radiative-temperature">—</strong></span><span>RECONSTRUCTED FLUX / F₀<strong id="space-radiative-flux">—</strong></span></div><div id="space-inference-chart"></div><p id="space-inference-status">Select a star and infer from available photometry to build this family.</p></div>
       <div id="space-distance-options" class="space-options" hidden><button id="space-refresh-distances" type="button" class="export-button">Reload acquired Gaia candidates</button><span id="space-distance-scale">Physical coordinate scale pending evidence</span></div>
       <div id="space-surface-options" class="space-options" hidden><label>Computed surface<select id="space-surface-kind"><option value="chirp">Frequency × frequency derivative</option><option value="localized">Time × frequency</option></select></label><label>Vertical scale<input id="space-height" type="range" min="1" max="5" step=".1" value="1"></label><button id="space-run-transform" type="button" class="export-button">Run current foundry experiment ↗</button></div>
       <div id="space-worker-options" class="space-options" hidden><button id="space-run-cluster" type="button" class="export-button">Run a real cluster experiment ↗</button><span>Nodes represent measured processes and their coordinator.</span></div>
@@ -82,7 +83,7 @@ let fittingModel = false;
 let queuedModel = false;
 let view: View = 'sky';
 let transform: TransformResult | null = null;
-let cluster: ClusterResult | null = null;
+let cluster: ClusterEvidence | null = null;
 let simulation: SimulationResult | null = null;
 let astrometry: AstrometryCatalogue | null = null;
 let gaiaEvidence: GaiaEvidence | null = null;
@@ -366,8 +367,16 @@ function buildDistances(): void {
   node('space-worker-ledger').hidden = false;
   node('space-worker-ledger').innerHTML = entries.length ? `<p>Gaia DR3 positional candidates; source associations are unconfirmed. Distances are conditional on the parallax likelihood and an exponentially decreasing space-density prior of ${fmt(astrometry?.prior_length_pc, 0)} pc. Integration support: 0.001–20,000 pc.</p><table><thead><tr><th>POSITIONAL CANDIDATE</th><th>MEDIAN / pc</th><th>16–84% / pc</th></tr></thead><tbody>${entries.map(entry => `<tr><td>${html(entry.name)}<small>Gaia ${html(entry.source_id)} · ${fmt(entry.separation_arcsec, 2)}″ separation</small><small>${html(entry.quality_flags.join('; ') || 'No quoted quality flag')}</small></td><td>${fmt(entry.distance_median_pc, 0)}</td><td>${fmt(entry.distance_p16_pc, 0)}–${fmt(entry.distance_p84_pc, 0)}</td></tr>`).join('')}</tbody></table><ul class="space-distance-caveats">${astrometry?.caveats.map(caveat => `<li>${html(caveat)}</li>`).join('') ?? ''}</ul>` : '<p>Acquire Gaia evidence for a selected star. A positional match requires identity and astrometric-quality review before treating it as the Mira distance.</p>';
 }
+function transformSource(report: TransformResult): string {
+  const name = report.provenance?.name?.trim(), id = report.provenance?.star_id?.trim();
+  return name && id && name !== id ? `${name} (${id})` : name || id || 'Source in the Transform Foundry report';
+}
 function buildWorkers(): void {
   const workers = cluster?.node_results ?? transform?.ensemble.workers ?? [];
+  const workload = cluster?.node_results ? cluster.name || cluster.star_id || 'Source in the cluster experiment report' : transform ? transformSource(transform) : null;
+  const workloadBand = cluster?.node_results ? cluster.band : transform?.provenance.band;
+  const workloadTime = cluster?.node_results ? cluster.time_system : transform?.provenance.time_system;
+  const receiptSource = workload ? `Workload observations: ${workload}${workloadBand ? ` · ${workloadBand} band` : ''}${workloadTime ? ` · ${workloadTime}` : ''}.` : '';
   const coordinator = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 2), new THREE.MeshBasicMaterial({ color: 0xe8a069, wireframe: true }));
   content.add(coordinator);
   const coordinatorLabel = labelSprite('PYTHON COORDINATOR', '#ffbe8a', 4.4); coordinatorLabel.position.set(0, 1.9, 0); content.add(coordinatorLabel);
@@ -381,8 +390,9 @@ function buildWorkers(): void {
     const count = labelSprite(`${worker.tasks_completed} tasks · ${fmt(worker.compute_seconds)} s`, '#95a6bc', 3.8); count.position.copy(position).add(new THREE.Vector3(0, -1.3, 0)); content.add(count);
   }
   const gridHelper = new THREE.GridHelper(22, 22, 0x34445f, 0x142238); gridHelper.position.y = -3; content.add(gridHelper);
-  node('space-worker-ledger').innerHTML = workers.length ? `<table><thead><tr><th>HOST / PID</th><th>TASKS</th><th>COMPUTE / s</th></tr></thead><tbody>${workers.map(worker => `<tr><td>${html(worker.hostname)}<small>PID ${html(worker.worker_pid)}${worker.mpi_rank !== undefined ? ` · rank ${html(worker.mpi_rank)}` : ''}</small></td><td>${fmt(worker.tasks_completed, 0)}</td><td>${fmt(worker.compute_seconds, 3)}</td></tr>`).join('')}</tbody></table>` : '<p>Run the cluster experiment or Transform Foundry to place actual process receipts here. The empty coordinator represents the workflow; no workers have been invented.</p>';
-  node('space-hud-count').textContent = workers.length ? `${fmt(workers.length, 0)} measured worker processes` : 'Awaiting measured process receipts';
+  node('space-worker-ledger').innerHTML = workers.length ? `<p>${html(receiptSource)}</p><table><thead><tr><th>HOST / PID</th><th>TASKS</th><th>COMPUTE / s</th></tr></thead><tbody>${workers.map(worker => `<tr><td>${html(worker.hostname)}<small>PID ${html(worker.worker_pid)}${worker.mpi_rank !== undefined ? ` · rank ${html(worker.mpi_rank)}` : ''}</small></td><td>${fmt(worker.tasks_completed, 0)}</td><td>${fmt(worker.compute_seconds, 3)}</td></tr>`).join('')}</tbody></table>` : '<p>Run the cluster experiment or Transform Foundry to place actual process receipts here. The empty coordinator represents the workflow; no workers have been invented.</p>';
+  node('space-hud-count').textContent = workers.length ? `${workload ?? 'Source in the experiment report'} · ${fmt(workers.length, 0)} measured worker processes` : 'Awaiting measured process receipts';
+  if (receiptSource) node('space-geometry-note').textContent = `${receiptSource} ${viewDescriptions.workers[1]}`;
 }
 function surfaceGrid() { return node<HTMLSelectElement>('space-surface-kind').value === 'localized' ? transform?.localized : transform?.chirp; }
 function surfaceKey(): string | null {
@@ -446,7 +456,8 @@ function buildSurface(): void {
   selectedCell.row = Math.min(selectedCell.row, rows - 1); selectedCell.frequency = Math.min(selectedCell.frequency, columns - 1);
   node<HTMLInputElement>('space-cell-frequency').value = String(selectedCell.frequency); node<HTMLInputElement>('space-cell-row').value = String(selectedCell.row);
   node('space-surface-readout').hidden = false; updateSurfaceCell();
-  node('space-hud-count').textContent = `${fmt(rows * columns, 0)} computed cells · ${native ? 'C++ indexed mesh' : 'browser triangulation'} · ${fmt(dataset.native_seconds, 3)} native s`;
+  node('space-hud-count').textContent = `${transformSource(report)} · ${fmt(rows * columns, 0)} computed cells · ${native ? 'C++ indexed mesh' : 'browser triangulation'} · ${fmt(dataset.native_seconds, 3)} native s`;
+  node('space-geometry-note').textContent = `Computed observations: ${transformSource(report)} · ${report.provenance.band} band · ${report.provenance.time_system}. ${viewDescriptions.surface[1]}`;
   if (surfaceError && !native) announce(surfaceError);
 }
 function updateSurfaceCell(): void {
@@ -622,6 +633,7 @@ async function selectStar(index: number): Promise<void> {
 }
 async function fitStar(): Promise<void> {
   const star = data?.stars[selectedIndex]; if (!star) return;
+  if (!node<HTMLInputElement>('space-reference-temperature').checkValidity()) { node('space-inference-status').textContent = 'Choose an assumed reference temperature from 1,500 to 10,000 K before calculating the next hypothesis.'; return; }
   if (fittingModel) { queuedModel = true; node('space-inference-status').textContent = 'Your latest hypothesis is queued behind the current native model calculation.'; return; }
   fittingModel = true;
   const request = ++modelRequest, button = node<HTMLButtonElement>('space-model-fit'); button.disabled = true; button.textContent = 'C++ fitting measured photometry…';
@@ -637,7 +649,11 @@ async function fitStar(): Promise<void> {
     if (request === modelRequest) {
       node('space-model-brightness').textContent = `Measured brightness unavailable: ${errorMessage(error)}`;
       node('space-inference-status').textContent = `The requested hypothesis was not calculated: ${errorMessage(error)}`;
-      if (starModel?.radiative_family?.radius_fraction !== undefined && !queuedModel) { node<HTMLInputElement>('space-radius-fraction').value = String(starModel.radiative_family.radius_fraction); updateHypothesis(false); }
+      if (starModel?.radiative_family && !queuedModel) {
+        if (starModel.radiative_family.radius_fraction !== undefined) node<HTMLInputElement>('space-radius-fraction').value = String(starModel.radiative_family.radius_fraction);
+        if (starModel.radiative_family.reference_temperature_k !== undefined) node<HTMLInputElement>('space-reference-temperature').value = String(starModel.radiative_family.reference_temperature_k);
+        updateHypothesis(false);
+      }
     }
   }
   finally { fittingModel = false; button.disabled = false; button.textContent = 'Infer from measured brightness'; if (queuedModel) { queuedModel = false; void fitStar(); } }
@@ -674,7 +690,7 @@ function renderInferenceChart(): void {
   }
   node('space-inference-chart').innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Measured Fourier phase flux and conditional reconstructed flux overlap for this hypothesis">${body}</svg><p><span class="space-flux-key measured"></span>Measured phase fit <span class="space-flux-key reconstructed"></span>Conditional reconstruction</p>${predictionFigure}`;
   const error = family.reconstructed_fluxes.reduce((max, flux, index) => Math.max(max, Math.abs(flux - fluxes[index]) / Math.max(1e-12, Math.abs(fluxes[index]))), 0);
-  node('space-inference-status').textContent = `η = ${fmt(family.radius_fraction, 2)} · max reconstructed-flux relative difference ${scientific(error)}. Changing η alters radius and temperature while preserving the same phase flux. This degeneracy needs independent measurements.`;
+  node('space-inference-status').textContent = `η = ${fmt(family.radius_fraction, 2)} · assumed T₀ = ${fmt(family.reference_temperature_k, 0)} K · max reconstructed-flux relative difference ${scientific(error)}. Changing η alters radius and temperature while preserving the same phase flux. This degeneracy needs independent measurements.`;
 }
 async function loadAstrometry(): Promise<void> {
   try { astrometry = await api<AstrometryCatalogue>('/api/space/astrometry'); if (view === 'distance') setView('distance', false); }
@@ -799,11 +815,12 @@ function updateHypothesis(recompute: boolean): void {
   node('space-radius-fraction-label').textContent = fmt(fraction, 2);
   document.querySelectorAll<HTMLButtonElement>('[data-radius-fraction]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.radiusFraction) === fraction)));
   clearTimeout(inferenceTimer);
+  if (!node<HTMLInputElement>('space-reference-temperature').checkValidity()) { node('space-inference-status').textContent = 'Choose an assumed reference temperature from 1,500 to 10,000 K before calculating the next hypothesis.'; return; }
   if (recompute && starModel?.radiative_family) inferenceTimer = setTimeout(() => { void fitStar(); }, 350);
 }
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-radius-fraction]')) button.addEventListener('click', () => { node<HTMLInputElement>('space-radius-fraction').value = button.dataset.radiusFraction ?? '.5'; updateHypothesis(true); });
 node('space-radius-fraction').addEventListener('input', () => updateHypothesis(true));
-node('space-reference-temperature').addEventListener('change', () => updateHypothesis(true));
+node('space-reference-temperature').addEventListener('input', () => updateHypothesis(true));
 node('space-refresh-distances').addEventListener('click', () => { void loadAstrometry(); });
 node('space-surface-kind').addEventListener('change', () => setView('surface'));
 node('space-height').addEventListener('input', () => setView('surface', false));
@@ -811,7 +828,7 @@ for (const id of ['space-cell-frequency', 'space-cell-row']) node(id).addEventLi
 node('space-run-transform').addEventListener('click', () => { const form = document.getElementById('transform-form') as HTMLFormElement | null; form?.requestSubmit(); announce('Current Transform Foundry experiment submitted; the surface appears when computed.'); });
 node('space-run-cluster').addEventListener('click', () => { const form = document.getElementById('cluster-form') as HTMLFormElement | null; form?.requestSubmit(); announce('Real cluster experiment submitted; waiting for process receipts.'); });
 window.addEventListener('thoth:transform-result', event => { transform = (event as CustomEvent<TransformResult>).detail; if (view === 'surface' || view === 'workers') setView(view, false); });
-window.addEventListener('thoth:cluster-result', event => { cluster = (event as CustomEvent<ClusterResult>).detail; if (view === 'workers') setView(view, false); });
+window.addEventListener('thoth:cluster-result', event => { cluster = (event as CustomEvent<ClusterEvidence>).detail; if (view === 'workers') setView(view, false); });
 window.addEventListener('thoth:simulation-result', event => { simulation = (event as CustomEvent<SimulationResult>).detail; if (view === 'star') announce(`Dimensionless oscillator available: ${fmt(simulation.times_days.length, 0)} computed samples; brightness uses measured photometry independently.`); });
 window.addEventListener('thoth:star-selected', event => { const id = (event as CustomEvent<{ id: string }>).detail.id; const index = data?.stars.findIndex(star => star.id === id); if (index !== undefined && index >= 0 && index !== selectedIndex) void selectStar(index); });
 
