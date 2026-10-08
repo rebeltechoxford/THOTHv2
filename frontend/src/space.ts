@@ -5,12 +5,12 @@ import { errorMessage } from './dom';
 import type { Star, ClusterResult, WorkerResult, TransformResult, SimulationResult } from './types';
 import './space.css';
 
-interface SpaceStar { id: string; name: string; catalog: string; region: string; aliases?: string[]; period_days: number | null; mean_i_mag?: number | null; amplitude_i_mag?: number | null }
-interface DensityCell { ra_deg: number; dec_deg: number; count: number; solid_angle_sr: number; density_per_sr: number; x: number; y: number; z: number }
+interface SpaceStar { id: string; name: string; catalog: string; region: string; aliases?: string[]; ra_deg: number | null; dec_deg: number | null; period_days: number | null; mean_i_mag?: number | null; amplitude_i_mag?: number | null }
+interface DensityCell { longitude_index: number; latitude_index: number; ra_deg: number; dec_deg: number; count: number; solid_angle_sr: number; density_per_sr: number; x: number; y: number; z: number }
 interface SurveyGroup { name: string; catalog: string; region: string; count: number; centroid: number[] }
 interface SpaceData { stars: SpaceStar[]; positions: (number[] | null)[]; galactic_positions: (number[] | null)[]; density_cells: DensityCell[]; groups: SurveyGroup[]; counts: { catalog_entries: number; mapped_entries: number; missing_coordinates: number }; geometry: Record<string, unknown>; provenance: Record<string, unknown>; caveats: string[]; computation: Record<string, unknown> }
 interface RadiativeFamily { radii_relative: number[]; temperatures_k: number[]; reconstructed_fluxes: number[]; radius_fraction?: number; reference_temperature_k?: number; counterfactual_predictions?: { label: string; wavelength_um: number; relative_fluxes: (number | null)[]; delta_magnitudes: (number | null)[]; kind: string }[]; [key: string]: unknown }
-interface StarModel { star?: Star; star_id?: string; selected_phase?: number; selected_model?: { radius_relative: number; phase: number }; period_days?: number | null; phase_curve?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_source?: string; model_kind?: string; geometry?: Record<string, unknown>; computation?: Record<string, unknown>; caveats?: string[]; mesh?: { positions: number[]; normals?: number[]; indices: number[]; [key: string]: unknown }; radiative_family?: RadiativeFamily; fit?: { period_days: number; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[] }; photometry?: { phase_curve?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[]; period_days?: number; status?: string }; [key: string]: unknown }
+interface StarModel { star?: Star; star_id?: string; selected_phase?: number; selected_model?: { radius_relative: number; phase: number }; period_days?: number | null; phase_curve?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_source?: string; model_kind?: string; geometry?: Record<string, unknown>; computation?: Record<string, unknown>; caveats?: string[]; mesh?: { positions: number[]; normals?: number[]; indices: number[]; [key: string]: unknown }; radiative_family?: RadiativeFamily; fit?: { period_days: number; reduced_chi2?: number; n_observations?: number; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[] }; provenance?: { photometry?: { input_observations?: number; used_observations?: number } }; photometry?: { phase_curve?: { phase: number; magnitude: number; relative_flux?: number }[]; phase_model?: { phase: number; magnitude: number; relative_flux?: number }[]; period_days?: number; status?: string }; [key: string]: unknown }
 interface AstrometryEntry { star_id: string; source_id: string; name: string; direction: number[]; position_pc: number[]; distance_median_pc: number; distance_p16_pc: number; distance_p84_pc: number; parallax_mas: number; parallax_error_mas: number; separation_arcsec: number; association_status: string; quality_flags: string[]; source_url: string }
 interface AstrometryCatalogue { items: AstrometryEntry[]; total: number; prior_length_pc: number; geometry: Record<string, unknown>; caveats: string[] }
 interface GaiaCandidate { source_id: string; ra: number; dec: number; parallax: number | null; parallax_error: number | null; ruwe: number | null; distance_usable: boolean; separation_arcsec: number; quality_flags: string[]; [key: string]: unknown }
@@ -112,6 +112,7 @@ let stellarLayers: THREE.Group | null = null;
 let surface: THREE.Mesh | null = null;
 let surfaceMarker: THREE.Mesh | null = null;
 let densityMesh: THREE.InstancedMesh | null = null;
+let activeDensityCells: DensityCell[] = [];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let visible = true;
@@ -239,22 +240,43 @@ function updateSelectionMarker(): void {
   const ring = new THREE.Mesh(new THREE.RingGeometry(.19, .23, 40), new THREE.MeshBasicMaterial({ color: 0xffba75, side: THREE.DoubleSide, transparent: true, opacity: .85 }));
   selectionMarker.add(ring); selectionMarker.position.copy(positionFor(selectedIndex)); content.add(selectionMarker); dirty = true;
 }
+function filteredDensityCells(space: SpaceData, indices: readonly number[]): DensityCell[] {
+  const longitudeBins = Number(space.geometry.longitude_bins), latitudeBins = Number(space.geometry.latitude_bins);
+  const counts = new Uint32Array(longitudeBins * latitudeBins);
+  for (const index of indices) {
+    const star = space.stars[index];
+    if (!space.positions[index] || star.ra_deg === null || star.dec_deg === null || !Number.isFinite(star.ra_deg) || !Number.isFinite(star.dec_deg) || star.dec_deg < -90 || star.dec_deg > 90) continue;
+    let longitude = star.ra_deg % 360;
+    if (longitude < 0) longitude += 360;
+    const column = Math.min(longitudeBins - 1, Math.floor(longitude / 360 * longitudeBins));
+    const row = Math.min(latitudeBins - 1, Math.floor((star.dec_deg + 90) / 180 * latitudeBins));
+    counts[row * longitudeBins + column]++;
+  }
+  return space.density_cells.map(cell => {
+    const count = counts[cell.latitude_index * longitudeBins + cell.longitude_index];
+    return { ...cell, count, density_per_sr: count / cell.solid_angle_sr };
+  });
+}
 function buildDensity(): void {
   if (!data) return;
   makeCoordinateGrid();
-  const cells = data.density_cells;
+  const cells = filteredDensityCells(data, matched);
+  activeDensityCells = cells;
   const maximum = Math.max(1, ...cells.map(cell => cell.density_per_sr));
   densityMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(.06, .13, 1, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .8 }), cells.length);
   const helper = new THREE.Object3D(), up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i];
     const axis = new THREE.Vector3(cell.x, cell.y, cell.z).normalize();
-    const strength = Math.log1p(cell.density_per_sr) / Math.log1p(maximum), height = .07 + strength * 4;
+    const strength = Math.log1p(cell.density_per_sr) / Math.log1p(maximum), height = .005 + strength * 4;
     helper.position.copy(axis).multiplyScalar(10 + height / 2); helper.quaternion.setFromUnitVectors(up, axis); helper.scale.set(1, height, 1); helper.updateMatrix();
     densityMesh.setMatrixAt(i, helper.matrix); densityMesh.setColorAt(i, new THREE.Color().setHSL(.52 + strength * .21, .68, .45 + strength * .18));
   }
   content.add(densityMesh);
   content.add(new THREE.Mesh(new THREE.SphereGeometry(9.98, 48, 32), new THREE.MeshBasicMaterial({ color: 0x071220, transparent: true, opacity: .85 })));
+  const mapped = cells.reduce((sum, cell) => sum + cell.count, 0), populated = cells.filter(cell => cell.count > 0).length;
+  node('space-hud-count').textContent = `${fmt(mapped, 0)} filtered mapped entries · ${fmt(populated, 0)} populated / ${fmt(cells.length, 0)} angular cells`;
+  node('space-geometry-note').textContent = `Current filter: ${fmt(matched.length, 0)} matching entries, ${fmt(mapped, 0)} with coordinates. Counts and entries per steradian use these matches on the native equatorial grid. Heights are normalized to this filter’s density maximum; zero-count cells retain a display marker. ${viewDescriptions.density[1]}`;
 }
 
 function buildStar(): void {
@@ -577,7 +599,7 @@ function filterRecords(): void {
   matched = data.stars.flatMap((star, index) => ((!query || `${star.name} ${star.id} ${star.aliases?.join(' ') ?? ''}`.toLowerCase().includes(query)) && (!catalog || star.catalog === catalog) && (!region || star.region === region) && ((!minText && !maxText) || (star.period_days !== null && star.period_days >= minimum && star.period_days <= maximum))) ? [index] : []);
   page = 0; renderRecordList();
   if (view === 'sky' || view === 'period') setView(view, false);
-  else if (view === 'density') node('space-match-count').textContent += ' · density retains full catalogue';
+  else if (view === 'density') setView('density', false);
 }
 function renderInspector(): void {
   const compact = data?.stars[selectedIndex]; if (!compact) return;
@@ -604,7 +626,7 @@ function renderInspector(): void {
 }
 function safeName(value: string): string { return value.replace(/[^a-zA-Z0-9._-]/g, '_'); }
 function download(content: string, filename: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type })), anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const url = URL.createObjectURL(new Blob([content], { type })), anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.hidden = true; document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 function exportStarObj(): void {
   const mesh = starModel?.mesh, star = data?.stars[selectedIndex]; if (!mesh || !star) return;
@@ -690,7 +712,8 @@ function renderInferenceChart(): void {
   }
   node('space-inference-chart').innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Measured Fourier phase flux and conditional reconstructed flux overlap for this hypothesis">${body}</svg><p><span class="space-flux-key measured"></span>Measured phase fit <span class="space-flux-key reconstructed"></span>Conditional reconstruction</p>${predictionFigure}`;
   const error = family.reconstructed_fluxes.reduce((max, flux, index) => Math.max(max, Math.abs(flux - fluxes[index]) / Math.max(1e-12, Math.abs(fluxes[index]))), 0);
-  node('space-inference-status').textContent = `η = ${fmt(family.radius_fraction, 2)} · assumed T₀ = ${fmt(family.reference_temperature_k, 0)} K · max reconstructed-flux relative difference ${scientific(error)}. Changing η alters radius and temperature while preserving the same phase flux. This degeneracy needs independent measurements.`;
+  const fit = starModel?.fit, inputCount = starModel?.provenance?.photometry?.input_observations;
+  node('space-inference-status').textContent = `Fourier phase fit: P = ${fmt(fit?.period_days, 4)} days · reduced χ² = ${fmt(fit?.reduced_chi2, 3)} · ${fmt(fit?.n_observations, 0)} used observations${inputCount ? ` / ${fmt(inputCount, 0)} supplied` : ''}. η = ${fmt(family.radius_fraction, 2)} · assumed T₀ = ${fmt(family.reference_temperature_k, 0)} K. Maximum relative radiative flux closure ${scientific(error)} compares the reconstruction with the fitted phase curve; it is not an observational residual. Changing η alters radius and temperature while preserving that same fitted flux. This degeneracy needs independent measurements.`;
 }
 async function loadAstrometry(): Promise<void> {
   try { astrometry = await api<AstrometryCatalogue>('/api/space/astrometry'); if (view === 'distance') setView('distance', false); }
@@ -771,8 +794,9 @@ node('space-canvas').addEventListener('pointerup', event => {
     const hit = raycaster.intersectObject(pointCloud)[0]; if (hit?.index !== undefined) void selectStar(pointIndices[hit.index]);
   } else if (densityMesh && data) {
     const hit = raycaster.intersectObject(densityMesh)[0]; if (hit?.instanceId === undefined) return;
-    const cell = data.density_cells[hit.instanceId];
-    node('space-hud-count').textContent = `RA ${fmt(cell.ra_deg, 1)}° / Dec ${fmt(cell.dec_deg, 1)}° · ${fmt(cell.count, 0)} entries · ${fmt(cell.density_per_sr, 0)} sr⁻¹`;
+    const cell = activeDensityCells[hit.instanceId];
+    if (!cell) return;
+    node('space-hud-count').textContent = `Filtered cell: RA ${fmt(cell.ra_deg, 1)}° / Dec ${fmt(cell.dec_deg, 1)}° · ${fmt(cell.count, 0)} matching entries · ${fmt(cell.density_per_sr, 0)} sr⁻¹`;
   } else if (surface && transform) {
     const hit = raycaster.intersectObject(surface)[0], dataset = surfaceGrid(); if (!hit || !dataset) return;
     node<HTMLInputElement>('space-cell-frequency').value = String(Math.max(0, Math.min(dataset.frequencies.length - 1, Math.round((hit.point.x / 16 + .5) * (dataset.frequencies.length - 1)))));
