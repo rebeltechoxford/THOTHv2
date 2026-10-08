@@ -420,10 +420,12 @@ std::vector<double> evaluate(const InputArray &time_array, double period,
 
 #include "research.hpp"
 #include "transforms.hpp"
+#include "space.hpp"
 
 PYBIND11_MODULE(_native, module) {
     thoth_research::register_functions(module);
     thoth_transforms::register_functions(module);
+    thoth_space::register_functions(module);
     module.doc() = "C++ weighted floating-mean Fourier period search for THOTHv2.";
     module.def("backend_info", []() {
         py::dict info;

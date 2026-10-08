@@ -153,6 +153,7 @@ async function selectStar(id: string) {
   try {
     const star=await api<Star>(`/api/stars/${encodeURIComponent(id)}`);if(selection!==state.selection)return;
     state.selected=star;resetAnalysis();renderStar();
+    window.dispatchEvent(new CustomEvent('thoth:star-selected', {detail:star}));
     try {const curve=await api<Lightcurve>(`/api/stars/${encodeURIComponent(id)}/lightcurve`);if(selection!==state.selection)return;state.curve=curve;renderObserved();}
     catch(error){if(selection!==state.selection)return;$('observed-chart').innerHTML='<p class="empty-message">Observed photometry is unavailable for this record.</p>';$('observation-count').textContent='No observations';$('lightcurve-notice').innerHTML=`<span>${esc(errorMessage(error))}</span>${id!==state.status?.example_star_id?'<button id="return-example" class="notice-action">Open the bundled example ↗</button>':''}`;$('lightcurve-notice').hidden=false;$('fit-status').textContent='Select the bundled example to run the analysis without downloading new photometry.';}
   } catch(error){toast(errorMessage(error));}
@@ -246,6 +247,7 @@ async function pollCluster() {
   }catch(error){clusterFailed(errorMessage(error));}
 }
 function renderClusterResults(result: ClusterResult) {
+  window.dispatchEvent(new CustomEvent('thoth:cluster-result', {detail: result}));
   state.clusterResult=result;
   $('cluster-results').hidden=false;
   const metrics=[['SERIAL TIME',fmt(result.serial_seconds,2),'s'],['PARALLEL TIME',fmt(result.parallel_seconds,2),'s'],['SPEEDUP',fmt(result.speedup,2),'×'],['EFFICIENCY',fmt(Number(result.efficiency)*100,1),'%']];

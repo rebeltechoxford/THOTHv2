@@ -1,6 +1,6 @@
 {
   "name": "thoth-mira-observatory",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,11 @@
     "build": "npm run check && vite build"
   },
   "devDependencies": {
+    "@types/three": "^0.186.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.0"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
   }
 }

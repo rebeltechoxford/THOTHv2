@@ -194,6 +194,7 @@ async function pollResearch(): Promise<void> {
     if (job.state === 'complete') {
       if (!job.result) { failResearch('The completed job did not include an evidence report.'); return; }
       researchResult = job.result;
+      window.dispatchEvent(new CustomEvent('thoth:research-result', {detail:job.result}));
       candidateIndex = 0;
       researchJobId = null;
       btn('research-run').disabled = false;
@@ -324,6 +325,7 @@ async function integrateSimulation(event?: SubmitEvent): Promise<void> {
     const result = await post<SimulationResult>('/api/simulation', simulationParameters());
     if (request !== simulationRequest) return;
     simulation = result; simulationStep = 0;
+    window.dispatchEvent(new CustomEvent('thoth:simulation-result', {detail:result}));
     slider('sim-scrub').max = String(result.times_days.length - 1);
     field('sim-scrub').value = '0'; field('sim-scrub').disabled = false;
     btn('simulation-play').disabled = false;

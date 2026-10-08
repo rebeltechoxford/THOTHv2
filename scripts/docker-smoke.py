@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 from urllib.error import HTTPError
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 
@@ -42,13 +43,13 @@ def request(path: str, payload: dict | None = None):
             time.sleep(0.1)
 
 
-def completed_job(path: str, payload: dict, *, timeout: int = 180):
+def completed_job(path: str, payload: dict, *, timeout: int = 180, return_id: bool = False):
     receipt = request(path, payload)
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         job = request(path + "/" + receipt["job_id"])
         if job["state"] == "complete":
-            return job["result"]
+            return (job["result"], receipt["job_id"]) if return_id else job["result"]
         if job["state"] == "failed":
             raise AssertionError(job.get("error"))
         time.sleep(0.25)
@@ -73,6 +74,63 @@ def main() -> int:
     for asset in assets:
         assert request(asset), f"Empty or unavailable frontend asset: {asset}"
     print("Packaged TypeScript UI, catalog, and native-engine readiness passed.", flush=True)
+
+    atlas = request("/api/space")
+    assert atlas["counts"]["catalog_entries"] == catalog["total"]
+    assert len(atlas["stars"]) == len(atlas["positions"]) == len(atlas["galactic_positions"]) == catalog["total"]
+    assert sum(group["count"] for group in atlas["groups"]) == catalog["total"]
+    assert sum(cell["count"] for cell in atlas["density_cells"]) == atlas["counts"]["mapped_entries"]
+    assert atlas["geometry"]["distance_unit"] is None
+    assert len(atlas["provenance"]["catalog_snapshot_sha256"]) == 64
+    assert atlas["computation"]["coordinate_evaluations"] >= catalog["total"]
+    print(f"Complete 3D angular atlas retains {catalog['total']} catalog entries and source provenance.", flush=True)
+
+    models = [request("/api/space/star", {"star_id": STAR, "phase": 0.25,
+        "resolution": 12, "radius_fraction": fraction, "contrast": 0}) for fraction in (0, 1)]
+    for model in models:
+        assert model["photometry_status"] == "available"
+        assert model["provenance"]["photometry"]["data_source"] == "bundled"
+        mesh, family = model["mesh"], model["radiative_family"]
+        assert len(mesh["positions"]) == len(mesh["normals"]) == 3 * mesh["vertex_count"]
+        assert len(mesh["indices"]) == 3 * mesh["triangle_count"]
+        assert all(math.isfinite(value) for value in mesh["positions"])
+        radius = model["selected_model"]["radius_relative"]
+        assert math.isclose(mesh["minimum_radius"], radius, rel_tol=1e-12)
+        assert math.isclose(mesh["maximum_radius"], radius, rel_tol=1e-12)
+        assert model["geometry"]["physical_radius"] is None
+        assert len(family["radii_relative"]) == len(family["temperatures_k"]) == len(family["phases"]) == 301
+        assert all(math.isclose(actual, reconstructed, rel_tol=1e-11, abs_tol=1e-12)
+            for actual, reconstructed in zip(family["relative_fluxes"], family["reconstructed_fluxes"]))
+        assert [prediction["label"] for prediction in family["counterfactual_predictions"]] == ["V", "I", "K"]
+    assert models[0]["relative_flux_at_phase"] == models[1]["relative_flux_at_phase"]
+    assert math.isclose(models[0]["selected_model"]["radius_relative"], 1, rel_tol=1e-12)
+    assert math.isclose(models[1]["selected_model"]["temperature_k"], 3000, rel_tol=1e-12)
+    first_k, second_k = (model["radiative_family"]["counterfactual_predictions"][2]["relative_fluxes"] for model in models)
+    assert max(abs(first-second) for first, second in zip(first_k, second_k)) > 0.001
+    print("Distinct native 3D radius/temperature families reproduce measured flux and predict different unmeasured K curves.", flush=True)
+
+    from thoth.astrometry import BUNDLED
+    snapshot = json.loads(BUNDLED.read_text(encoding="utf-8"))
+    assert snapshot["release"] == "Gaia DR3" and snapshot["items"]
+    target = next(record for record in snapshot["items"] if any(candidate["distance_usable"] for candidate in record["candidates"]))
+    evidence = request("/api/space/evidence/" + quote(target["star_id"], safe="") + "?" +
+                       urlencode({"radius_arcsec": target["cone_radius_arcsec"]}))
+    assert evidence["response_sha256"] == target["response_sha256"]
+    assert evidence["adql_query"] == target["adql_query"] and len(evidence["response_sha256"]) == 64
+    assert evidence["association_status"] == "unconfirmed_position_candidates"
+    candidate = next(row for row in evidence["candidates"] if row["distance_usable"])
+    posterior = request("/api/space/distance", {"parallax_mas": candidate["parallax"],
+        "parallax_error_mas": candidate["parallax_error"], "samples": 256})
+    assert 0 < posterior["p16_pc"] < posterior["median_pc"] < posterior["p84_pc"] < posterior["upper_bound_pc"]
+    assert posterior["cumulative_probability"][-1] == 1
+    assert posterior["posterior_evaluations"] > 0 and posterior["native_seconds"] > 0
+    spatial = request("/api/space/astrometry")
+    assert spatial["total"] > 0
+    assert all(item["association_status"] == "unconfirmed_position_candidates" for item in spatial["items"])
+    absent = request("/api/space/star", {"star_id": "GCVS:omi Cet", "resolution": 12})
+    assert absent["photometry_status"] == "unavailable" and absent["fit"] is None
+    assert absent["radiative_family"] is None and absent["relative_flux_at_phase"] is None
+    print("Offline acquired Gaia receipt, conditional native distance posterior, and explicit missing-photometry handling passed.", flush=True)
 
     fit = request("/api/analyze", {"star_id": STAR, "samples": 200, "threads": 2})
     assert fit["n_observations"] > 100 and fit["period_days"] > 0
@@ -103,16 +161,22 @@ def main() -> int:
     assert research["provenance"]["source_url"] and research["provenance"]["time_system"] == "HJD"
     print("Native RK4 convergence and measured-data hypothesis research passed.", flush=True)
 
-    transforms = completed_job("/api/transforms/jobs", {
+    transforms, transform_id = completed_job("/api/transforms/jobs", {
         "star_id": STAR, "min_period": 60, "max_period": 140,
         "frequency_samples": 32, "drift_samples": 5, "time_samples": 8,
         "surrogates": 4, "workers": 2, "observations_limit": 120,
-    })
+    }, return_id=True)
     assert len(transforms["chirp"]["powers"]) == 5
     assert len(transforms["localized"]["powers"]) == 8
     assert sum(transforms["structure_function"]["pair_counts"]) > 0
     assert transforms["ensemble"]["task_count"] == 8
     assert transforms["computation"]["native_seconds"] > 0
+    surface = request(f"/api/space/surfaces/{transform_id}?kind=chirp")
+    assert surface["mesh"]["grid_rows"] == 5 and surface["mesh"]["grid_columns"] == 32
+    assert surface["powers"] == transforms["chirp"]["powers"]
+    assert surface["mesh"]["triangle_count"] > 0
+    assert all(math.isfinite(value) for value in surface["mesh"]["positions"])
+    assert surface["axes"]["x"]["values"] == transforms["chirp"]["frequencies"]
     print("Frequency/drift, localized, phase-dispersion, pairwise and real ensemble transforms passed.", flush=True)
 
     curve = request(f"/api/stars/{STAR}/lightcurve")

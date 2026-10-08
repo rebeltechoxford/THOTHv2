@@ -205,6 +205,7 @@ function point(x: number, y: number | null): PlotPoint | null { return y !== nul
 function facts(items: [string, string][]): string { return items.map(([label, value]) => `<span>${html(label)} <b>${html(value)}</b></span>`).join(''); }
 
 function renderResult(report: TransformResult): void {
+  window.dispatchEvent(new CustomEvent('thoth:transform-result', {detail: report}));
   element('transform-results').hidden = false;
   const c = report.computation, e = report.ensemble, p = report.provenance;
   element('transform-metrics').innerHTML = [

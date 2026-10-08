@@ -1,8 +1,8 @@
-# THOTHv2 · Mira Research Lab
+# THOTHv2 · Three-dimensional Mira Research Observatory
 
-Jesse Sullivan's 2017 C/Python experiment grew up: C++ does numerical astronomy, Python coordinates the experiments and prepares their results, and a compiled TypeScript interface lets you study them from your phone. MPI carries the same native work onto a Beowulf cluster.
+Jesse Sullivan's 2017 C/Python experiment grew up: C++ computes astronomical fits, distance posteriors and three-dimensional model geometry, Python acquires evidence and coordinates the experiments, and a compiled TypeScript/Three.js interface lets you study them from your phone. MPI carries the same native research work onto a Beowulf cluster.
 
-**A working research lab and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, native weighted Fourier fitting, evolving-period and time-frequency maps, phase dispersion, pairwise variability, reproducible noise and signal-injection ensembles, and a nonlinear numerical sandbox. The compute lab measures the same real workload in serial and across worker processes.
+**A working three-dimensional research lab and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, photometry-constrained radius/temperature model families, Gaia-candidate distance uncertainty, native weighted Fourier fitting, evolving-period and time-frequency maps, phase dispersion, pairwise variability, and reproducible noise and signal-injection ensembles. The compute lab measures the same real workload in serial and across worker processes.
 
 ## Start the observatory
 
@@ -16,12 +16,16 @@ The launcher builds TypeScript and C++, then serves on **http://localhost:8765**
 
 On Linux/macOS: run `npm ci && npm run build` inside `frontend/`, then create a virtual environment, activate it with `source .venv/bin/activate`, install with `python -m pip install -e '.[dev]'`, and run `thoth serve --host 0.0.0.0`. Bind to `127.0.0.1` for access only on the server.
 
-The complete catalog and two real light curves are bundled for offline use. Other OGLE curves are fetched on selection and cached locally. Stars without a supported photometry archive show their catalog details and an explicit availability message. No simulated observations replace missing data. All frontend charts work without a CDN.
+The complete source snapshot, two measured light curves and acquired Gaia example receipts are bundled for offline use. Other OGLE curves and Gaia position candidates are fetched when requested and cached locally. Stars without usable photometry keep their catalog details and an explicit availability message; their measured brightness and radiative models remain missing. No simulated observations replace missing data. The compiled frontend works without a CDN.
 
 ## What you can study
 
 - Search all five bundled source lists, filter period/catalog/region, sort records and export CSV.
 - Inspect J2000 sky coordinates, published periods, I/V magnitudes, I amplitudes, spectral types where supplied, and source provenance.
+- Explore the **3D Observatory**: every catalog entry retains its identity in the angular atlas, with equatorial/Galactic direction views, a solid-angle-corrected density layer and survey-region group summaries. Unknown coordinates remain missing; the unit sphere does not invent physical distances.
+- Reconstruct **conditional three-dimensional star models** from measured brightness. C++ fits the light curve and solves radius/temperature families that reproduce its relative flux. Change the assumed radius/temperature split, compare different 3D envelopes that fit the same data, and inspect unmeasured V/K proxy predictions that could distinguish those models with additional observations.
+- Acquire **Gaia DR3 evidence** with a saved query receipt, inspect candidate associations and astrometric quality flags, and compute a Bayesian distance posterior from parallax and its uncertainty. The spatial layer displays conditional candidate distances and radial intervals; it does not assign invented depths to the full catalog.
+- Rotate actual frequency/drift and time/frequency computations as **3D surfaces** with missing cells preserved as holes. Inspect real worker identities and task telemetry in a logical three-dimensional compute-cluster view.
 - Plot actual observed magnitude versus HJD, fit periods in C++, inspect the frequency search, and phase-fold the data against a fitted Fourier curve.
 - Run **Discovery Lab** on measured photometry: compare one-, two- and three-harmonic hypotheses against later observations, inspect residuals and separated peaks, compute the actual cadence window, and compare early/late fits. Conditional observation suggestions rank where competing fitted periods disagree.
 - Import your own single-band CSV with explicit JD/HJD/BJD times. Measurements and completed research reports persist in the local workspace, with source hashes and an auditable compute budget.
@@ -35,7 +39,9 @@ The complete catalog and two real light curves are bundled for offline use. Othe
 
 The snapshot contains complete OGLE **Mira** lists for the Galactic bulge (40,356), Galactic disk (25,625), LMC (1,663), SMC (352), and GCVS exact `M` entries (7,920). These are **catalog entries, not 75,916 distinct cross-matched stars or a census of every known Mira**. Different surveys overlap, have selection effects and update at different times. [Sources and reproducible refresh](docs/SOURCES.md) explain the inclusion rules and provenance.
 
-The fitter solves a floating-mean, weighted Fourier model at each frequency. It estimates periodic structure in a light curve; it does not solve stellar interiors, radiative transfer, nonlinear pulsation, or stellar evolution. Mira cycles can drift and show irregular shapes. Fitted periods depend on band, time coverage, sampling, frequency resolution, aliases and model order. Power is relative chi-square improvement, not a significance probability. Photometric uncertainties alone do not capture cycle-to-cycle variability. Missing distance, temperature, radius and luminosity remain missing.
+The fitter solves a floating-mean, weighted Fourier model at each frequency. It estimates periodic structure in a light curve; it does not solve stellar interiors, full radiative transfer, nonlinear stellar pulsation, or stellar evolution. Mira cycles can drift and show irregular shapes. Fitted periods depend on band, time coverage, sampling, frequency resolution, aliases and model order. Power is relative chi-square improvement, not a significance probability. Photometric uncertainties alone do not capture cycle-to-cycle variability.
+
+The three-dimensional star envelope is constrained by fitted relative flux under an explicit monochromatic blackbody assumption. A single band cannot uniquely determine radius and temperature: the reference temperature and radius/temperature split select a conditional family, while absolute radius remains unknown. The V/I/K curves are model predictions, not new observations or calibrated colors. Gaia cone matches remain unconfirmed associations; their distance intervals depend on the stated prior and parallax likelihood. The full atlas is angular, and survey regions are not newly discovered gravitationally bound clusters. [3D evidence and reconstruction methods](docs/SPACE.md) explain these distinctions and the numerical validation.
 
 ## Reproducible numerical work
 
@@ -81,6 +87,8 @@ Tests cover native period recovery with irregular observations, weighted fitting
 Research tests also check chronological model selection, candidate predictions, sampling windows against a direct calculation, analytic harmonic-oscillator behavior, fourth-order convergence and forced/damped energy accounting. TypeScript must pass strict checking before the production build; optional Docker CI builds and exercises the actual packaged runtime.
 
 Transform tests compare native changing-frequency fits with independent NumPy least squares, check time localization and direct pairwise calculations, and verify deterministic ensemble outputs across worker counts. The API persists finite evidence reports and shares the same exclusive compute slot with the other labs.
+
+Three-dimensional tests validate all-entry retention, Galactic coordinate rotation, spherical bin areas, indexed surface geometry, conditional distance normalization, and flux closure for distinct radius/temperature families. Independent Planck-ratio checks verify unmeasured band predictions; missing archive data, ambiguous identities and missing grid cells remain explicit. Optional Docker smoke checks exercise the packaged 3D APIs and bundled evidence without depending on live archives.
 
 ## Investigating unknowns
 

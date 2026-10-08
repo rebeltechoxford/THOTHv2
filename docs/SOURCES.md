@@ -49,4 +49,91 @@ Period searches, phase folding, harmonic fits and residual statistics describe t
 
 The fitted Fourier intercept and the uncertainty-weighted arithmetic mean of observed magnitudes are different statistics from the catalog's intensity mean. The kernel's reduced chi-square uses `N − (2 × harmonics + 1)` at the selected trial frequency; it does not account for selecting the frequency through a search. Its reference epoch centers the numerical basis in time and is not the physical date of maximum brightness. Reported observational uncertainties may omit systematic errors and intrinsic changes between Mira cycles, so a large reduced chi-square should prompt examination of the data and model assumptions.
 
-The snapshot does not contain measured distances, masses, radii, luminosities or interior structures for all entries, and THOTH does not invent them. Converting periods or magnitudes into those quantities would need additional observations, extinction corrections and a stated calibrated model. Cluster execution distributes independent light-curve calculations; it does not turn a phenomenological fit into a stellar-evolution simulation.
+The Mira snapshot does not contain measured distances, masses, radii, luminosities or interior structures for all entries, and THOTH does not invent them. The separate Gaia evidence layer provides candidate parallaxes for a small acquired subset; distance inference remains conditional. Converting photometry into an absolute stellar radius would need additional calibrated observations, extinction corrections and a stated physical model. Cluster execution distributes independent light-curve calculations; it does not turn a phenomenological fit into a stellar-evolution simulation.
+
+## Gaia DR3 evidence and conditional distance
+
+The application acquires nearby position candidates from the official ESA Gaia
+DR3 `gaiadr3.gaia_source` table through its TAP endpoint. If that request fails,
+it can query the CDS/VizieR `I/355/gaiadr3` mirror. Each saved receipt records the
+actual endpoint, ADQL query, cone radius, UTC retrieval time, SHA-256 of the
+archive response, candidate coordinates, parallax and error, proper motion,
+RUWE and G magnitude. A receipt is reproducible acquisition evidence, not a
+verified crossmatch.
+
+The release's astrometry uses ICRS directions at reference epoch J2016.0;
+catalog equinox J2000 does not establish a common position epoch. Proper motion
+is retained but not silently used to propagate an unknown catalog epoch.
+[ESA's DR3 summary](https://www.cosmos.esa.int/web/gaia/dr3) describes the frame
+and reference epoch. Scientific use should credit ESA's Gaia mission and the
+[Gaia Data Processing and Analysis Consortium](https://www.cosmos.esa.int/web/gaia/dpac/consortium)
+and cite Gaia Collaboration, Vallenari et al. (2023), *Gaia Data Release 3:
+Summary of the contents and survey properties*, A&A **674**, A1,
+[DOI 10.1051/0004-6361/202243940](https://doi.org/10.1051/0004-6361/202243940).
+
+`src/thoth/data/astrometry.json` contains six real, three-arcsecond ESA query
+receipts acquired on 2026-10-08 UTC for offline demonstrations:
+
+| Catalog target | Nearby Gaia candidates | With parallax and positive error |
+| --- | ---: | ---: |
+| omi Cet / Mira | 0 | 0 |
+| R Leo | 1 | 0 |
+| R Hya | 1 | 1 |
+| R Cas | 1 | 1 |
+| OGLE-BLG-LPV-096697 | 1 | 1 |
+| OGLE-LMC-LPV-04312 | 2 | 2 |
+
+These are query results, not five confirmed Mira distance measurements. Empty
+cones remain empty. R Leo's position-only candidate has no usable distance
+constraint. Elevated or missing RUWE, low parallax signal-to-noise and
+nonpositive parallax remain visible as quality flags. The two LMC-target
+candidates remain ambiguous. Mira variability, crowding and photocenter motion
+can further complicate source identity and astrometry.
+
+Acquire another auditable receipt with:
+
+```console
+python -m thoth.astrometry --star "GCVS:R Hya" --radius-arcsec 3 --output outputs/r-hya-gaia.json
+```
+
+The C++ distance kernel evaluates a Gaussian parallax likelihood and an
+exponentially decreasing space-density prior:
+
+```text
+p(r | parallax) proportional to
+    r^2 * exp(-r/L) * exp[-0.5 * ((parallax_mas - 1000/r) / error_mas)^2]
+```
+
+Its numerical support is explicitly bounded from `0.001 pc` to the chosen
+maximum distance; the default API bound is `20,000 pc`. It normalizes using
+nonuniform trapezoidal integration, refines high-signal positive-parallax
+regions, and reports the median, mode and 16th/84th percentiles. All intervals
+condition on that support, the selected prior length and likelihood. This is
+an inference from a candidate's reported parallax, not reciprocal-parallax
+conversion or the Gaia team's published distance product. The method follows
+the inference principles in [Bailer-Jones (2015), *Estimating distances from
+parallaxes*](https://arxiv.org/abs/1507.02105).
+
+The demo does not apply a Gaia parallax zero-point correction or model
+astrometric covariances, binary motion, source misidentification, Mira-specific
+systematics or a population-specific Galactic prior. Prior sensitivity is
+especially consequential for weak or negative parallaxes. A low-quality
+posterior for a candidate in an LMC-target cone does not establish the distance
+to that Mira or the LMC.
+
+## What the three-dimensional reconstruction adds
+
+The complete angular atlas preserves all 75,916 catalog entry IDs and uses
+only measured celestial directions. Unit-sphere radius is a rendering
+coordinate, not an inferred physical distance. Survey-region groups use source
+labels and spherical mean directions; they are not identified bound clusters.
+
+For measured photometry, the native period fit gives a relative brightness
+curve. C++ then solves explicit normalized radius/temperature families that
+reproduce that fitted flux under a monochromatic blackbody approximation. The
+reference temperature and radius/temperature split are assumptions, while
+absolute radius remains unknown. Different families can fit the same I-band
+data and predict different unmeasured V/K curves, indicating additional
+measurements that could test those explanations. These predictions are neither
+new observations nor calibrated filter-integrated colors. [SPACE.md](SPACE.md)
+documents the equations, provenance, geometry and validation.

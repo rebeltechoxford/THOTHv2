@@ -15,6 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from . import __version__
@@ -23,6 +24,7 @@ from .science import analyze_lightcurve, native_status
 from .datasets import import_dataset, list_datasets, read_record, write_record
 
 app = FastAPI(title="THOTHv2 Mira Observatory", version=__version__)
+app.add_middleware(GZipMiddleware, minimum_size=2048)
 WEB = Path(__file__).parent / "web"
 # Windows registry mappings can label .js as text/plain, which browsers reject
 # for ES modules. Pin standard web asset types within this process only.
@@ -529,3 +531,120 @@ def transform_job(job_id: str):
     if saved is None or saved.get("kind") != "transforms":
         raise HTTPException(404, "Transform job not found.")
     return saved
+
+
+@lru_cache(maxsize=6)
+def space_snapshot(catalog: str = "", region: str = ""):
+    from .space import prepare_space_catalog
+    records = filter_stars(catalog=catalog, region=region)
+    return prepare_space_catalog(records, threads=1)
+
+
+@app.get("/api/space")
+def space_catalog(catalog: str = "", region: str = ""):
+    try:
+        return space_snapshot(catalog, region)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error
+
+
+class StarModelRequest(BaseModel):
+    star_id: str = Field(max_length=150)
+    phase: float = Field(0, ge=0, le=1, allow_inf_nan=False)
+    resolution: int = Field(48, ge=12, le=96)
+    displacement: float = Field(0, ge=-0.5, le=0.5, allow_inf_nan=False)
+    contrast: float = Field(0, ge=0, le=0.25, allow_inf_nan=False)
+    radius_fraction: float = Field(0.5, ge=0, le=1, allow_inf_nan=False)
+    reference_temperature_k: float = Field(3000, ge=1500, le=10000, allow_inf_nan=False)
+    wavelength_um: float | None = Field(None, ge=0.2, le=20, allow_inf_nan=False)
+
+
+@app.post("/api/space/star")
+def space_star_model(request: StarModelRequest):
+    record = get_star(request.star_id)
+    if record is None:
+        raise HTTPException(404, "Star not found.")
+    if not _compute_slot.acquire(blocking=False):
+        raise HTTPException(409, "A compute experiment is already running. Wait for its measured results.")
+    try:
+        from .space import build_star_model
+        from .astrometry import cached_evidence
+        curve = None
+        acquisition_error = None
+        if record.get("lightcurve_url"):
+            try:
+                curve = load_lightcurve(record["id"])
+            except (CatalogError, OSError) as error:
+                acquisition_error = str(error)
+        result = build_star_model(record, curve, **request.model_dump(exclude={"star_id"}))
+        result["distance_evidence"] = cached_evidence(record["id"])
+        if acquisition_error:
+            result["photometry_acquisition_error"] = acquisition_error
+        json.dumps(result, allow_nan=False)
+        return result
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error
+    finally:
+        _compute_slot.release()
+
+
+@app.get("/api/space/evidence/{star_id}")
+def space_evidence(star_id: str, radius_arcsec: float = Query(3, ge=1, le=30, allow_inf_nan=False), refresh: bool = False):
+    record = get_star(star_id)
+    if record is None:
+        raise HTTPException(404, "Star not found.")
+    try:
+        from .astrometry import acquire_evidence
+        return acquire_evidence(record, radius_arcsec, refresh=refresh)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except (RuntimeError, OSError) as error:
+        raise HTTPException(424, str(error)) from error
+
+
+class DistanceRequest(BaseModel):
+    parallax_mas: float = Field(ge=-1000000, le=1000000, allow_inf_nan=False)
+    parallax_error_mas: float = Field(ge=0.000001, le=1000, allow_inf_nan=False)
+    prior_length_pc: float = Field(1350, ge=1, le=10000, allow_inf_nan=False)
+    samples: int = Field(1024, ge=128, le=8192)
+    max_distance_pc: float = Field(20000, ge=10, le=100000, allow_inf_nan=False)
+
+
+@app.post("/api/space/distance")
+def space_distance(request: DistanceRequest):
+    from .research import _native_engine
+    try:
+        return _native_engine().distance_posterior(**request.model_dump())
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error
+
+
+@app.get("/api/space/astrometry")
+def space_astrometry(prior_length_pc: float = Query(1350, ge=1, le=10000, allow_inf_nan=False)):
+    try:
+        from .astrometry import spatial_candidates
+        return spatial_candidates(prior_length_pc)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except (RuntimeError, OSError) as error:
+        raise HTTPException(503, str(error)) from error
+
+
+@app.get("/api/space/surfaces/{job_id}")
+def space_transform_surface(job_id: str, kind: str = Query("chirp", pattern="^(chirp|localized)$")):
+    job = transform_job(job_id)
+    if job["state"] != "complete" or job.get("result") is None:
+        raise HTTPException(409, "Complete a transform experiment before reconstructing its surface.")
+    from .space import build_transform_surface
+    try:
+        return build_transform_surface(job["result"], kind)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error

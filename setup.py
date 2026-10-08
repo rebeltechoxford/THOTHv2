@@ -14,7 +14,7 @@ if openmp:
         link_args = ["-fopenmp"]
 setup(
     ext_modules=[Pybind11Extension("thoth._native", ["native/bindings.cpp"], cxx_std=17,
-                                 depends=["native/research.hpp", "native/transforms.hpp"],
+                                 depends=["native/research.hpp", "native/transforms.hpp", "native/space.hpp"],
                                  extra_compile_args=compile_args, extra_link_args=link_args)],
     cmdclass={"build_ext": build_ext},
 )

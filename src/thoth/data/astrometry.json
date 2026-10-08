@@ -1,0 +1,252 @@
+{
+  "release": "Gaia DR3",
+  "items": [
+    {
+      "star_id": "GCVS:omi Cet",
+      "name": "omi Cet",
+      "catalog_ra_deg": 34.836625,
+      "catalog_dec_deg": -2.977638888888889,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [],
+      "candidate_count": 0,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',34.836625000000,-2.977638888889,0.000833333333))",
+      "response_sha256": "e5830d0e28971534d18c1ce97558de051cbeaf4ac5ee733990255ed2160f63da",
+      "retrieved_utc": "2026-10-08T08:12:59.676971+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    },
+    {
+      "star_id": "GCVS:R Leo",
+      "name": "R Leo",
+      "catalog_ra_deg": 146.88954166666667,
+      "catalog_dec_deg": 11.428805555555554,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [
+        {
+          "source_id": "612958873284344448",
+          "ra": 146.88954587505722,
+          "dec": 11.428602192827272,
+          "parallax": null,
+          "parallax_error": null,
+          "pmra": null,
+          "pmdec": null,
+          "ruwe": null,
+          "phot_g_mean_mag": 5.1439795,
+          "separation_arcsec": 0.7322564107893766,
+          "distance_usable": false,
+          "quality_flags": [
+            "Missing or elevated RUWE; the single-source astrometric fit may be unreliable."
+          ]
+        }
+      ],
+      "candidate_count": 1,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',146.889541666667,11.428805555556,0.000833333333))",
+      "response_sha256": "a511f15ba3cd631e2518bc4999c0abfcb7157e023bc552ddbac90a31f19eda8a",
+      "retrieved_utc": "2026-10-08T08:13:05.637897+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    },
+    {
+      "star_id": "GCVS:R Hya",
+      "name": "R Hya",
+      "catalog_ra_deg": 202.42825,
+      "catalog_dec_deg": -23.281333333333333,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [
+        {
+          "source_id": "6195030801635544704",
+          "ra": 202.42798835570676,
+          "dec": -23.28126748094725,
+          "parallax": 6.735509777640576,
+          "parallax_error": 0.4634702,
+          "pmra": -54.21311701177379,
+          "pmdec": 11.79364794852804,
+          "ruwe": 2.9133182,
+          "phot_g_mean_mag": 3.1524858,
+          "separation_arcsec": 0.8971143740198323,
+          "distance_usable": true,
+          "quality_flags": [
+            "Missing or elevated RUWE; the single-source astrometric fit may be unreliable."
+          ]
+        }
+      ],
+      "candidate_count": 1,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',202.428250000000,-23.281333333333,0.000833333333))",
+      "response_sha256": "5f0b6020fac37d414c33426a364a6b441c3497ef4d1ebda2ae7548227c3472f9",
+      "retrieved_utc": "2026-10-08T08:13:11.289506+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    },
+    {
+      "star_id": "GCVS:R Cas",
+      "name": "R Cas",
+      "catalog_ra_deg": 359.60362499999997,
+      "catalog_dec_deg": 51.38880555555556,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [
+        {
+          "source_id": "1944073004732961152",
+          "ra": 359.6042078737109,
+          "dec": 51.38888688843412,
+          "parallax": 5.7423323694108275,
+          "parallax_error": 0.20106766,
+          "pmra": 82.84682339042875,
+          "pmdec": 17.485227134178448,
+          "ruwe": 3.0655596,
+          "phot_g_mean_mag": 6.7437563,
+          "separation_arcsec": 1.3417706466296528,
+          "distance_usable": true,
+          "quality_flags": [
+            "Missing or elevated RUWE; the single-source astrometric fit may be unreliable."
+          ]
+        }
+      ],
+      "candidate_count": 1,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',359.603625000000,51.388805555556,0.000833333333))",
+      "response_sha256": "c578855af2cd06699ce05a43ab0c19ab67082147b89d8f0ed7b67a9fe7b1bb36",
+      "retrieved_utc": "2026-10-08T08:13:16.394753+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    },
+    {
+      "star_id": "OGLE-BLG-LPV-096697",
+      "name": "OGLE-BLG-LPV-096697",
+      "catalog_ra_deg": 268.292125,
+      "catalog_dec_deg": -29.078222222222223,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [
+        {
+          "source_id": "4056580569471072640",
+          "ra": 268.2921132685932,
+          "dec": -29.07825308998647,
+          "parallax": -0.10862062087907158,
+          "parallax_error": 0.1223859,
+          "pmra": -0.4171162189553207,
+          "pmdec": -12.343327292900941,
+          "ruwe": 1.0513197,
+          "phot_g_mean_mag": 16.534182,
+          "separation_arcsec": 0.11709343104728524,
+          "distance_usable": true,
+          "quality_flags": [
+            "Low parallax signal-to-noise; distance inference is sensitive to its prior.",
+            "Nonpositive measured parallax; reciprocal parallax is not a physical distance estimate."
+          ]
+        }
+      ],
+      "candidate_count": 1,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',268.292125000000,-29.078222222222,0.000833333333))",
+      "response_sha256": "a4c75eedb4668ec7e2f5bdde85efc94f618dffe117cc386aa2fa6feaa404b657",
+      "retrieved_utc": "2026-10-08T08:13:22.298507+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    },
+    {
+      "star_id": "OGLE-LMC-LPV-04312",
+      "name": "OGLE-LMC-LPV-04312",
+      "catalog_ra_deg": 72.66858333333333,
+      "catalog_dec_deg": -69.29222222222222,
+      "cone_radius_arcsec": 3.0,
+      "candidates": [
+        {
+          "source_id": "4655375082918329984",
+          "ra": 72.66862876298411,
+          "dec": -69.29217807330039,
+          "parallax": -0.22650222230468772,
+          "parallax_error": 0.088234276,
+          "pmra": 1.84683873510786,
+          "pmdec": 0.4081563748329462,
+          "ruwe": 0.90512836,
+          "phot_g_mean_mag": 17.184345,
+          "separation_arcsec": 0.16913028963628618,
+          "distance_usable": true,
+          "quality_flags": [
+            "Low parallax signal-to-noise; distance inference is sensitive to its prior.",
+            "Nonpositive measured parallax; reciprocal parallax is not a physical distance estimate."
+          ]
+        },
+        {
+          "source_id": "4655375078637778560",
+          "ra": 72.6671303566211,
+          "dec": -69.29255887644867,
+          "parallax": 0.06724200929506535,
+          "parallax_error": 0.368955,
+          "pmra": 0.8573592899932233,
+          "pmdec": 0.828835685460177,
+          "ruwe": 0.9990745,
+          "phot_g_mean_mag": 20.02393,
+          "separation_arcsec": 2.2112820557446438,
+          "distance_usable": true,
+          "quality_flags": [
+            "Low parallax signal-to-noise; distance inference is sensitive to its prior."
+          ]
+        }
+      ],
+      "candidate_count": 2,
+      "query_limit_reached": false,
+      "association_status": "unconfirmed_position_candidates",
+      "archive": "ESA Gaia DR3",
+      "source_url": "https://gea.esac.esa.int/tap-server/tap/sync",
+      "adql_query": "SELECT TOP 21 source_id,ra,dec,parallax,parallax_error,pmra,pmdec,ruwe,phot_g_mean_mag FROM gaiadr3.gaia_source WHERE 1=CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',72.668583333333,-69.292222222222,0.000833333333))",
+      "response_sha256": "f929925ff9a4542667c1f533d72bd77226738409546c93ebcce6fe9e71ed9d9b",
+      "retrieved_utc": "2026-10-08T08:13:27.103825+00:00",
+      "gaia_reference_epoch_jyear": 2016.0,
+      "caveats": [
+        "Nearby sources are candidate associations, not confirmed identities; a closest angular match is not proof.",
+        "Catalog J2000 specifies the coordinate frame/equinox. A common source position epoch is not established; proper motion is retained but not silently applied.",
+        "Gaia zero-point correction, astrometric covariances, binary photocenter motion and Mira variability systematics are not modeled.",
+        "Distance posteriors use an explicitly chosen prior and reported parallax error; they are conditional estimates, not directly measured distances.",
+        "A source cone reaching its 21-row limit is incomplete; use a narrower cone or external cross-matching before selecting an identity."
+      ]
+    }
+  ]
+}
