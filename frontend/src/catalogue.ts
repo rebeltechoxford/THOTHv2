@@ -148,12 +148,12 @@ function resetAnalysis() {
   $('observation-count').textContent='Loading';$('folded-period').textContent='Awaiting fit';
   $('folded-chart').innerHTML='<div class="chart-placeholder"><svg viewBox="0 0 120 42" aria-hidden="true"><path d="M2 23C12 23 14 4 27 4S41 38 53 38 65 4 78 4 90 38 103 38 113 25 118 23"/></svg><p>Run a native period search<br>to bring the cycles together.</p></div>';
 }
-async function selectStar(id: string) {
+async function selectStar(id: string, broadcast = true) {
   const selection=++state.selection;
   try {
     const star=await api<Star>(`/api/stars/${encodeURIComponent(id)}`);if(selection!==state.selection)return;
     state.selected=star;resetAnalysis();renderStar();
-    window.dispatchEvent(new CustomEvent('thoth:star-selected', {detail:star}));
+    if (broadcast) window.dispatchEvent(new CustomEvent('thoth:star-selected', {detail:star}));
     try {const curve=await api<Lightcurve>(`/api/stars/${encodeURIComponent(id)}/lightcurve`);if(selection!==state.selection)return;state.curve=curve;renderObserved();}
     catch(error){if(selection!==state.selection)return;$('observed-chart').innerHTML='<p class="empty-message">Observed photometry is unavailable for this record.</p>';$('observation-count').textContent='No observations';$('lightcurve-notice').innerHTML=`<span>${esc(errorMessage(error))}</span>${id!==state.status?.example_star_id?'<button id="return-example" class="notice-action">Open the bundled example ↗</button>':''}`;$('lightcurve-notice').hidden=false;$('fit-status').textContent='Select the bundled example to run the analysis without downloading new photometry.';}
   } catch(error){toast(errorMessage(error));}
@@ -289,8 +289,8 @@ async function initialize() {
   else {$('engine-status').innerHTML='<span class="status-dot"></span>Engine status unavailable';$('engine-status').classList.add('unavailable');}
   if(results[2].status==='fulfilled'){state.sky=results[2].value;const regions=[...new Set(state.sky.map(s=>s.region).filter(Boolean))].sort();regions.forEach(region=>$('region-filter').add(new Option(region,region)));filterSky();}
   else {$('sky-count').textContent='Sky unavailable';$('period-distribution').innerHTML='<p class="empty-message">Catalogue visualization is unavailable.</p>';toast(errorMessage(results[2].reason));}
-  if(state.status?.example_star_id)selectStar(state.status.example_star_id);
-  else if(state.items.length)selectStar(state.items[0].id);
+  if(state.status?.example_star_id)selectStar(state.status.example_star_id, false);
+  else if(state.items.length)selectStar(state.items[0].id, false);
 }
 initDiscovery();
 initialize().catch(error=>toast(errorMessage(error)));

@@ -13,10 +13,11 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from . import __version__
 from .catalog import CatalogError, catalog_manifest, get_star, load_catalog, load_lightcurve
@@ -25,6 +26,17 @@ from .datasets import import_dataset, list_datasets, read_record, write_record
 
 app = FastAPI(title="THOTHv2 Mira Observatory", version=__version__)
 app.add_middleware(GZipMiddleware, minimum_size=2048)
+
+
+@app.exception_handler(RequestValidationError)
+async def finite_validation_errors(request, error: RequestValidationError):
+    # Do not echo a nonstandard JSON NaN/Infinity input into a JSON response.
+    # Keep the standard field path, type and message for usable diagnostics.
+    detail = [{key: item[key] for key in ("type", "loc", "msg") if key in item}
+              for item in error.errors()]
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
 WEB = Path(__file__).parent / "web"
 # Windows registry mappings can label .js as text/plain, which browsers reject
 # for ES modules. Pin standard web asset types within this process only.
@@ -648,3 +660,50 @@ def space_transform_surface(job_id: str, kind: str = Query("chirp", pattern="^(c
         raise HTTPException(422, str(error)) from error
     except RuntimeError as error:
         raise HTTPException(503, str(error)) from error
+
+
+class ObservingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    star_id: str = Field(min_length=1, max_length=150)
+    latitude_deg: float = Field(ge=-90, le=90, allow_inf_nan=False, strict=True)
+    longitude_deg: float = Field(ge=-180, le=180, allow_inf_nan=False, strict=True)
+    elevation_m: float = Field(152.4, ge=-500, le=10000, allow_inf_nan=False, strict=True)
+    time_utc: str | None = Field(None, max_length=80)
+    minimum_altitude_deg: float = Field(20, ge=0, le=85, allow_inf_nan=False, strict=True)
+    duration_hours: float = Field(12, ge=.5, le=24, allow_inf_nan=False, strict=True)
+    samples: int = Field(49, ge=13, le=97, strict=True)
+
+
+@app.get("/api/observing/defaults")
+def observing_defaults():
+    return {
+        "location": {"id": "university-ms-38677", "label": "University, MS 38677",
+                     "latitude_deg": 34.365, "longitude_deg": -89.538,
+                     "elevation_m": 152.4, "approximate": True,
+                     "source_url": "https://www.unitedstateszipcodes.org/38677/",
+                     "elevation_source_url": "https://catalog.olemiss.edu/2027/fall/university/buildings",
+                     "note": "Approximate postal-area center and campus elevation. Enter the actual telescope site before controlling hardware."},
+        "example_star_id": "GCVS:omi Cet", "minimum_altitude_deg": 20,
+        "azimuth_convention": "0° true north, 90° east; elevation above the geometric horizon.",
+    }
+
+
+@app.post("/api/observing/target")
+def observing_target(request: ObservingRequest):
+    record = get_star(request.star_id)
+    if record is None:
+        raise HTTPException(404, "Star not found.")
+    from .observing import observing_target as calculate_target
+    try:
+        parameters = request.model_dump(exclude={"star_id", "time_utc"})
+        result = calculate_target(record, when=request.time_utc, **parameters)
+        json.dumps(result, allow_nan=False)
+        return result
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(503, str(error)) from error
+
+
+from .mount_api import router as mount_router
+app.include_router(mount_router)

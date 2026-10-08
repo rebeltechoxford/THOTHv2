@@ -12,6 +12,9 @@ services:
     environment:
       THOTH_CACHE_DIR: /var/lib/thoth/cache
       THOTH_WORKSPACE_DIR: /var/lib/thoth/cache/workspace
+      THOTH_ALPACA_URL: "${THOTH_ALPACA_URL:-}"
+      THOTH_ALPACA_DEVICE: "${THOTH_ALPACA_DEVICE:-0}"
+      THOTH_MOUNT_CONTROL_TOKEN: "${THOTH_MOUNT_CONTROL_TOKEN:-}"
       OMP_NUM_THREADS: "${THOTH_NATIVE_THREADS:-4}"
       OPENBLAS_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"

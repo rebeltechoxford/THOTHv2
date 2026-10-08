@@ -639,7 +639,7 @@ function exportStarObj(): void {
   for (let i = 0; i < mesh.indices.length; i += 3) rows.push(`f ${mesh.indices.slice(i, i + 3).map(index => normals?.length === mesh.positions.length ? `${index + 1}//${index + 1}` : String(index + 1)).join(' ')}`);
   download(rows.join('\n') + '\n', `${safeName(star.id)}-phase-${phase.toFixed(3)}.obj`, 'text/plain');
 }
-async function selectStar(index: number): Promise<void> {
+async function selectStar(index: number, broadcast = true): Promise<void> {
   if (!data?.stars[index]) return;
   selectedIndex = index; selectedStar = null; starModel = null; gaiaEvidence = null; posterior = null; gaiaCandidateIndex = 0; priorLength = 1350; modelRequest++; node<HTMLInputElement>('space-phase').value = '0';
   node('space-inference-chart').innerHTML = ''; node('space-inference-status').textContent = 'Select a star and infer from available photometry to build this family.';
@@ -650,6 +650,7 @@ async function selectStar(index: number): Promise<void> {
     const record = await api<Star>(`/api/stars/${encodeURIComponent(id)}`);
     if (selectedIndex !== index) return;
     selectedStar = record; renderInspector();
+    if (broadcast) window.dispatchEvent(new CustomEvent('thoth:star-selected', { detail: record }));
     if (view === 'star') node('space-hud-count').textContent = record.name;
   } catch (error) { if (selectedIndex === index) node('space-model-brightness').textContent = `Detailed record unavailable: ${errorMessage(error)}`; }
 }
@@ -778,7 +779,7 @@ async function loadCatalogue(): Promise<void> {
     node('space-provenance').innerHTML = `<p><strong>Native computation receipt</strong></p><pre>${html(JSON.stringify(data.computation, null, 2))}</pre><p><strong>Source provenance</strong></p><pre>${html(JSON.stringify(data.provenance, null, 2))}</pre>`;
     node('space-caveats').innerHTML = data.caveats.map(caveat => `<li>${html(caveat)}</li>`).join('');
     setView(view);
-    const index = data.stars.findIndex(star => star.id === example); void selectStar(index >= 0 ? index : 0);
+    const index = data.stars.findIndex(star => star.id === example); void selectStar(index >= 0 ? index : 0, false);
     if (!renderer) announce(`${fmt(data.stars.length, 0)} catalogue records available without WebGL`);
   } catch (error) { node('space-record-list').textContent = `Catalogue geometry unavailable: ${errorMessage(error)}`; node('space-hud-count').textContent = 'Geometry could not be loaded'; announce('Retry by reloading the observatory'); }
 }
@@ -855,7 +856,7 @@ node('space-run-cluster').addEventListener('click', () => { const form = documen
 window.addEventListener('thoth:transform-result', event => { transform = (event as CustomEvent<TransformResult>).detail; if (view === 'surface' || view === 'workers') setView(view, false); });
 window.addEventListener('thoth:cluster-result', event => { cluster = (event as CustomEvent<ClusterEvidence>).detail; if (view === 'workers') setView(view, false); });
 window.addEventListener('thoth:simulation-result', event => { simulation = (event as CustomEvent<SimulationResult>).detail; if (view === 'star') announce(`Dimensionless oscillator available: ${fmt(simulation.times_days.length, 0)} computed samples; brightness uses measured photometry independently.`); });
-window.addEventListener('thoth:star-selected', event => { const id = (event as CustomEvent<{ id: string }>).detail.id; const index = data?.stars.findIndex(star => star.id === id); if (index !== undefined && index >= 0 && index !== selectedIndex) void selectStar(index); });
+window.addEventListener('thoth:star-selected', event => { const id = (event as CustomEvent<{ id: string }>).detail.id; const index = data?.stars.findIndex(star => star.id === id); if (index !== undefined && index >= 0 && index !== selectedIndex) void selectStar(index, false); });
 
 setupRenderer();
 if (reducedMotion) node('space-gesture').textContent = 'Motion is paused · drag to orbit · pinch to zoom';

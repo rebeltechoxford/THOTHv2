@@ -66,6 +66,14 @@ shows why one light curve can support different three-dimensional envelopes.
 V/I/K proxy curves are predictions to test with additional observations.
 See [SPACE.md](SPACE.md) for the measured inputs, model equations and limits.
 
+Open `http://SERVER-LAN-IP:8765/#observing-lab` for local azimuth/elevation and
+the mount panel. The initial University, MS 38677 location is an approximate
+postal-area center with a campus elevation estimate. Edit it to the exact
+telescope site. The simulator works without hardware; configuring a real
+ASCOM Alpaca endpoint and controller token is described in [MOUNTS.md](MOUNTS.md).
+Mount tracking always evaluates the current server time, even when the sky
+planner displays a historical or future date.
+
 The phone browser needs WebGL rendering for the three-dimensional scene. The
 same local URL continues to provide the catalog, numerical research and compute
 interfaces. Large catalog responses are compressed by the Python server;

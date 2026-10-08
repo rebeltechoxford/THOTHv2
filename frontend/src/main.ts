@@ -5,3 +5,4 @@ import './transforms.css';
 import './catalogue';
 import './transforms';
 import './space';
+import './observing';

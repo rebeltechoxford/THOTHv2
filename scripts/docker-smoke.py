@@ -132,6 +132,26 @@ def main() -> int:
     assert absent["radiative_family"] is None and absent["relative_flux_at_phase"] is None
     print("Offline acquired Gaia receipt, conditional native distance posterior, and explicit missing-photometry handling passed.", flush=True)
 
+    observing_site = request("/api/observing/defaults")
+    assert observing_site["location"]["approximate"] is True
+    pointing = request("/api/observing/target", {"star_id": "GCVS:omi Cet",
+        "latitude_deg": 34.365, "longitude_deg": -89.538, "elevation_m": 152.4,
+        "time_utc": "2024-10-08T05:00:00Z"})
+    assert -90 <= pointing["altitude_deg"] <= 90 and 0 <= pointing["azimuth_deg"] < 360
+    assert len(pointing["trajectory"]) == 49
+    assert all(math.isfinite(row["altitude_deg"]) for row in pointing["trajectory"])
+    mounts = request("/api/mounts")
+    simulator = next(adapter for adapter in mounts["adapters"] if adapter["simulated"])
+    request("/api/mounts/connect", {"adapter_id": simulator["id"]})
+    simulated = request("/api/mounts/status")
+    assert simulated["connected"] and simulated["simulated"] and not simulated["tracking"]
+    request("/api/mounts/arm", {"aligned_ack": True})
+    request("/api/mounts/stop", {})
+    stopped = request("/api/mounts/status")
+    assert not stopped["tracking"] and not stopped["slewing"]
+    request("/api/mounts/disconnect", {})
+    print("Offline local-sky coordinates and explicit simulator connect/arm/stop/disconnect passed.", flush=True)
+
     fit = request("/api/analyze", {"star_id": STAR, "samples": 200, "threads": 2})
     assert fit["n_observations"] > 100 and fit["period_days"] > 0
     assert fit["source_url"] and fit["time_system"] == "HJD"
