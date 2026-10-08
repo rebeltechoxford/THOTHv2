@@ -37,6 +37,10 @@ jobs:
       - run: python -m pip install -e ".[dev,cluster]"
       - run: mpiexec -n 2 python -m thoth.cluster --mpi --star OGLE-BLG-LPV-096697 --workers 1 --tasks 4 --samples 100 --observations-limit 300 --output outputs/mpi-experiment.json
       - run: mpiexec -n 2 thoth batch --mpi --ids examples/cluster-stars.txt --samples 100 --output outputs/mpi-batch.jsonl
+      - run: mpiexec -n 2 python -m thoth.transforms --mpi --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --frequency-samples 32 --drift-samples 5 --time-samples 8 --observations-limit 120 --surrogates 4 --output outputs/mpi-transforms.json
+      - run: python -m pytest tests/test_transform_workflow.py
+        env:
+          THOTH_TEST_MPI: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: mpi-science-results

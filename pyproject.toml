@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thoth-mira"
-version = "2.1.0"
+version = "2.2.0"
 description = "A Mira variable star observatory with native C++ analysis and Python visualization"
 readme = "README.md"
 requires-python = ">=3.10"

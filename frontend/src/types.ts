@@ -58,3 +58,47 @@ export interface SimulationResult {
   convergence: { max_displacement_difference: number; rms_displacement_difference: number; energy_balance_error: number; refinement_ratio: number };
   equation: string; model_kind: string; caveats: string[]; computation: Record<string, unknown>;
 }
+export interface TransformGrid {
+  frequencies: number[]; powers: (number | null)[][]; native_seconds: number;
+  observation_cell_evaluations: number; threads_used: number;
+}
+export interface ChirpTransform extends TransformGrid {
+  frequency_derivatives: number[]; best_frequency: number; best_frequency_derivative: number;
+  best_period_days: number; reference_epoch_jd: number;
+}
+export interface LocalizedTransform extends TransformGrid {
+  time_centers_jd: number[]; effective_observations: (number | null)[][];
+}
+export interface TransformTrial {
+  trial_index: number; pid: number; hostname: string; elapsed_seconds: number;
+}
+export interface NullTrial extends TransformTrial { max_power: number }
+export interface InjectionTrial extends TransformTrial {
+  injected_period_days: number; recovered_period_days: number; amplitude_mag: number;
+  amplitude_fraction: number; recovered: boolean;
+}
+export interface TransformEnsemble {
+  execution: string; base_seed: number; surrogates: number; injections: number; task_count: number;
+  observed_max_power: number; exceedances: number; empirical_p_value: number | null;
+  p_value_floor: number | null; null_max_powers: number[]; null_trials: NullTrial[];
+  injection_trials: InjectionTrial[]; recovery_fraction: number | null; elapsed_seconds: number;
+  workers: WorkerResult[]; sampling_assumption: string; caveats: string[];
+  injection_groups: { amplitude_fraction: number; amplitude_mag: number; injected_period_days: number;
+    trials: number; recovered: number; alias_count: number; recovery_fraction: number | null }[];
+}
+export interface TransformResult {
+  chirp: ChirpTransform; localized: LocalizedTransform;
+  phase_dispersion: { frequencies: number[]; theta: (number | null)[]; best_period_days: number; native_seconds: number };
+  structure_function: { lag_centers_days: number[]; mean_squared_difference: (number | null)[];
+    noise_corrected_difference: (number | null)[]; pair_counts: number[]; native_seconds: number };
+  ensemble: TransformEnsemble;
+  provenance: { input_sha256: string; input_observations: number; used_observations: number; band: string;
+    time_system: string; source_url: string; star_id: string; name: string; observation_span_days: number; subsampling: string };
+  computation: { pipeline_seconds: number; native_seconds: number; base_native_seconds: number; observation_cell_evaluations: number;
+    ensemble_observation_frequency_harmonic_evaluations: number; total_observation_evaluations: number; workers_requested: number };
+  caveats: string[];
+}
+export interface TransformJob {
+  state: 'queued' | 'running' | 'complete' | 'failed'; progress?: ResearchEvent;
+  events?: ResearchEvent[]; result?: TransformResult | null; error?: string | null;
+}

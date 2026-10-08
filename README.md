@@ -2,7 +2,7 @@
 
 Jesse Sullivan's 2017 C/Python experiment grew up: C++ does numerical astronomy, Python coordinates the experiments and prepares their results, and a compiled TypeScript interface lets you study them from your phone. MPI carries the same native work onto a Beowulf cluster.
 
-**A working research lab and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, native weighted Fourier fitting, hypothesis comparisons, residual and cadence diagnostics, conditional observation planning, and a nonlinear numerical sandbox. The compute lab measures the same real workload in serial and across worker processes.
+**A working research lab and parallel-computing demo**, with 75,916 real Mira catalog entries, measured OGLE light curves, native weighted Fourier fitting, evolving-period and time-frequency maps, phase dispersion, pairwise variability, reproducible noise and signal-injection ensembles, and a nonlinear numerical sandbox. The compute lab measures the same real workload in serial and across worker processes.
 
 ## Start the observatory
 
@@ -25,6 +25,8 @@ The complete catalog and two real light curves are bundled for offline use. Othe
 - Plot actual observed magnitude versus HJD, fit periods in C++, inspect the frequency search, and phase-fold the data against a fitted Fourier curve.
 - Run **Discovery Lab** on measured photometry: compare one-, two- and three-harmonic hypotheses against later observations, inspect residuals and separated peaks, compute the actual cadence window, and compare early/late fits. Conditional observation suggestions rank where competing fitted periods disagree.
 - Import your own single-band CSV with explicit JD/HJD/BJD times. Measurements and completed research reports persist in the local workspace, with source hashes and an auditable compute budget.
+- Explore **Transform Foundry**: search a two-dimensional frequency/drift grid, inspect Gaussian localized time-frequency power and its effective observation support, compare a weighted phase-dispersion search, and compute all selected observation pairs in a noise-corrected structure function. Tap the maps to inspect alternative hypotheses.
+- Run independent Gaussian-noise trials and injected-signal recovery tests at the actual observing times. Their native frequency searches execute across real Python workers or MPI ranks; reports expose conditional noise assumptions, finite Monte Carlo resolution, recovery failures, task counts, worker identities and measured time.
 - Explore **Pulsation Sandbox**: change forcing, damping, nonlinearity and resolution, animate normalized displacement and phase trajectories, and inspect native RK4 step refinement and energy-balance diagnostics. This is an illustrative nonlinear oscillator, not calibrated stellar physics.
 - Run the **Compute Lab**: deterministic bootstrap tasks on real observations, a measured serial baseline, multiprocess execution, worker telemetry, speedup and efficiency.
 - Explore Amdahl's and Gustafson's theoretical scaling separately from measured performance, then run MPI jobs on actual cluster nodes.
@@ -43,6 +45,7 @@ thoth analyze --input observations.csv --band I --min-period 100 --max-period 80
 thoth research --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --samples 800 --output outputs/evidence.json
 thoth research --input observations.csv --band I --time-system BJD --min-period 100 --max-period 800 --output outputs/custom-evidence.json
 thoth simulate --damping 0.05 --drive 0.15 --nonlinearity 0.2 --steps-per-cycle 200 --output outputs/oscillator.json
+python -m thoth.transforms --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --surrogates 32 --workers 4 --output outputs/transforms.json
 thoth catalog-info
 thoth refresh-catalog --output outputs/new-snapshot
 ```
@@ -57,9 +60,14 @@ This is a first-class part of THOTHv2. The coordinator partitions independent sc
 python -m pip install -e ".[cluster]"
 mpiexec -n 4 python -m thoth.cluster --mpi --star OGLE-BLG-LPV-096697 --workers 1 --tasks 24 --output outputs/cluster.json
 mpiexec -n 4 thoth batch --mpi --ids examples/cluster-stars.txt --output outputs/catalog-fits.jsonl
+mpiexec -n 4 python -m thoth.transforms --mpi --star OGLE-BLG-LPV-096697 --min-period 60 --max-period 140 --surrogates 64 --output outputs/mpi-transforms.json
 ```
 
 An MPI runtime (Open MPI, MPICH, or Microsoft MPI) is required separately. [Cluster guide](docs/CLUSTER.md) covers strong/weak scaling, Amdahl/Gustafson models, data distribution, scheduling and a Slurm example. Measured speedup may be below one when tasks are small or process startup dominates. The local demo makes no claim to have run on a physical multi-host cluster.
+
+The [transform methods and scale guide](docs/TRANSFORMS.md) documents the new kernels and an 80-rank Slurm ensemble. Work grows with observations × frequency trials × drift/localization cells, repeated over independent experiments; the structure function additionally grows with observation pairs. These algorithms were available in 2017. A large survey ensemble can justify a cluster, but no historical million-dollar cost or required machine count is asserted. Operation counts are measured algorithmic work units, not hardware FLOPs. The phone interface projects ideal repeated-work scaling from completed task timings and labels that projection separately from measured execution.
+
+See [measured transform runs](docs/BENCHMARKS.md) for reproducible local and MPI workloads, timings, and what the counters mean.
 
 ## Verify
 
@@ -71,6 +79,8 @@ python -m build
 Tests cover native period recovery with irregular observations, weighted fitting, independent SVD coefficient validation, catalog parsing and counts, real offline photometry, API errors and exports, and worker consistency. CI builds on Linux and Windows and exercises MPI on Linux.
 
 Research tests also check chronological model selection, candidate predictions, sampling windows against a direct calculation, analytic harmonic-oscillator behavior, fourth-order convergence and forced/damped energy accounting. TypeScript must pass strict checking before the production build; optional Docker CI builds and exercises the actual packaged runtime.
+
+Transform tests compare native changing-frequency fits with independent NumPy least squares, check time localization and direct pairwise calculations, and verify deterministic ensemble outputs across worker counts. The API persists finite evidence reports and shares the same exclusive compute slot with the other labs.
 
 ## Investigating unknowns
 

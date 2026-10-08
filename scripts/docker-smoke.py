@@ -103,6 +103,18 @@ def main() -> int:
     assert research["provenance"]["source_url"] and research["provenance"]["time_system"] == "HJD"
     print("Native RK4 convergence and measured-data hypothesis research passed.", flush=True)
 
+    transforms = completed_job("/api/transforms/jobs", {
+        "star_id": STAR, "min_period": 60, "max_period": 140,
+        "frequency_samples": 32, "drift_samples": 5, "time_samples": 8,
+        "surrogates": 4, "workers": 2, "observations_limit": 120,
+    })
+    assert len(transforms["chirp"]["powers"]) == 5
+    assert len(transforms["localized"]["powers"]) == 8
+    assert sum(transforms["structure_function"]["pair_counts"]) > 0
+    assert transforms["ensemble"]["task_count"] == 8
+    assert transforms["computation"]["native_seconds"] > 0
+    print("Frequency/drift, localized, phase-dispersion, pairwise and real ensemble transforms passed.", flush=True)
+
     curve = request(f"/api/stars/{STAR}/lightcurve")
     csv_text = "time_jd,magnitude,error_mag\n" + "\n".join(
         f"{row['time_jd']},{row['magnitude']},{row['error_mag']}"

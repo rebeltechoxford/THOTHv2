@@ -224,3 +224,18 @@ On PowerShell use `$env:THOTH_TEST_MPI='1'` before the pytest command. If the
 launcher is outside `PATH`, set `THOTH_MPIEXEC` to its full path. The optional
 test verifies both ranks completed assigned work and rank zero wrote a valid
 JSON report. It does not require or claim multiple physical nodes.
+
+## Distributed transform ensembles
+
+`python -m thoth.transforms --mpi` distributes seeded independent-noise and
+signal-injection frequency searches at the actual observation timestamps.
+Each rank keeps one selected light curve and executes its assigned native
+fits with one OpenMP thread, avoiding rank × thread oversubscription. Rank zero
+computes the diagnostic maps and combines ensemble evidence into one report.
+The report records actual rank, hostname, PID, task allocation and timing.
+
+See [TRANSFORMS.md](TRANSFORMS.md) for equations, Monte Carlo assumptions and
+resource limits, and [transform_survey.slurm](../examples/transform_survey.slurm)
+for an 80-rank batch allocation. An MPI rank is a worker process; 80 ranks do not
+imply 80 computers or 80 clusters. Running that allocation requires a cluster
+you can access. This workstation demonstrates real MPI execution on one host.

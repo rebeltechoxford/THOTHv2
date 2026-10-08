@@ -421,3 +421,111 @@ def simulation(request: SimulationRequest):
         raise HTTPException(503, str(error)) from error
     finally:
         _compute_slot.release()
+
+
+_transform_jobs: dict[str, dict] = {}
+_transform_jobs_lock = threading.Lock()
+
+
+class TransformRequest(BaseModel):
+    """Bound the interactive workload; the MPI command supports larger surveys."""
+    star_id: str | None = Field(None, max_length=150)
+    dataset_id: str | None = Field(None, pattern=r"^[0-9a-f]{32}$")
+    min_period: float = Field(60, ge=0.5, le=100_000, allow_inf_nan=False)
+    max_period: float = Field(140, ge=0.5, le=100_000, allow_inf_nan=False)
+    frequency_samples: int = Field(128, ge=32, le=384)
+    drift_samples: int = Field(31, ge=3, le=81)
+    time_samples: int = Field(24, ge=8, le=64)
+    drift_cycles: float = Field(2, ge=0, le=8, allow_inf_nan=False)
+    window_cycles: float = Field(3, ge=0.5, le=8, allow_inf_nan=False)
+    surrogates: int = Field(12, ge=1, le=64)
+    workers: int = Field(2, ge=1, le=8)
+    observations_limit: int = Field(1200, ge=30, le=3000)
+    harmonics: int = Field(2, ge=1, le=3)
+    seed: int = Field(1729, ge=0, le=2**32 - 1)
+
+    @model_validator(mode="after")
+    def validate_experiment(self):
+        if bool(self.star_id) == bool(self.dataset_id):
+            raise ValueError("Choose exactly one catalog star or imported dataset.")
+        if self.min_period >= self.max_period:
+            raise ValueError("Minimum period must be less than maximum period.")
+        if self.drift_samples % 2 != 1:
+            raise ValueError("The drift grid must have an odd number of rows to include zero drift.")
+        return self
+
+
+def execute_transform_job(job_id: str, settings: dict):
+    started = time.perf_counter()
+
+    def progress(event):
+        with _transform_jobs_lock:
+            job = _transform_jobs[job_id]
+            job.update(state="running", progress=event)
+            job["events"].append({**event, "elapsed_seconds": time.perf_counter() - started})
+            job["events"] = job["events"][-120:]
+
+    try:
+        from .transforms import run_transform_lab
+        progress({"stage": "loading", "percent": 1, "detail": "Loading measured photometry and source provenance"})
+        curve = (read_record("datasets", settings["dataset_id"]) if settings.get("dataset_id")
+                 else load_lightcurve(settings["star_id"]))
+        if curve is None:
+            raise ValueError("The selected dataset no longer exists.")
+        result = run_transform_lab(curve, **{key: value for key, value in settings.items()
+                                            if key not in {"star_id", "dataset_id"}}, progress=progress)
+        result.update(request=settings, job_id=job_id)
+        json.dumps(result, allow_nan=False)
+        progress({"stage": "complete", "percent": 100, "detail": "Native transforms and ensemble evidence ready"})
+        with _transform_jobs_lock:
+            _transform_jobs[job_id].update(state="complete", result=result)
+            snapshot = dict(_transform_jobs[job_id])
+        try:
+            write_record("reports", job_id, snapshot)
+        except (OSError, ValueError):
+            with _transform_jobs_lock:
+                _transform_jobs[job_id]["persistence_warning"] = "Report is available for this session; saving to the workspace failed."
+    except Exception as error:
+        with _transform_jobs_lock:
+            _transform_jobs[job_id].update(state="failed", result=None, error=str(error))
+    finally:
+        _compute_slot.release()
+
+
+@app.post("/api/transforms/jobs", status_code=202)
+def start_transform_job(request: TransformRequest):
+    if request.star_id is not None and get_star(request.star_id) is None:
+        raise HTTPException(404, "Star not found.")
+    if request.dataset_id is not None and read_record("datasets", request.dataset_id) is None:
+        raise HTTPException(404, "Dataset not found in this local workspace.")
+    if not native_status()["native_available"]:
+        raise HTTPException(503, "Build the native engine before running transforms.")
+    if not _compute_slot.acquire(blocking=False):
+        raise HTTPException(409, "A compute experiment is already running. Wait for its measured results.")
+    job_id = uuid.uuid4().hex
+    with _transform_jobs_lock:
+        while len(_transform_jobs) >= 12:
+            _transform_jobs.pop(next(iter(_transform_jobs)))
+        _transform_jobs[job_id] = {"job_id": job_id, "kind": "transforms", "state": "queued",
+                                   "progress": {"stage": "preparing", "percent": 0, "detail": "Waiting for native kernels"},
+                                   "events": [], "result": None, "error": None}
+    try:
+        threading.Thread(target=execute_transform_job, args=(job_id, request.model_dump()), daemon=True).start()
+    except Exception as error:
+        with _transform_jobs_lock:
+            _transform_jobs[job_id].update(state="failed", error="Could not start the transform worker.")
+        _compute_slot.release()
+        raise HTTPException(503, "Could not start the transform worker.") from error
+    return {"job_id": job_id, "state": "queued"}
+
+
+@app.get("/api/transforms/jobs/{job_id}")
+def transform_job(job_id: str):
+    import copy
+    with _transform_jobs_lock:
+        if job_id in _transform_jobs:
+            return copy.deepcopy(_transform_jobs[job_id])
+    saved = read_record("reports", job_id)
+    if saved is None or saved.get("kind") != "transforms":
+        raise HTTPException(404, "Transform job not found.")
+    return saved

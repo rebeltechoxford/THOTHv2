@@ -82,16 +82,17 @@ physics or evolutionary state.
    with explicit positional and identity uncertainty; integrate additional
    passbands, parallax and spectroscopy with their provenance and selection
    effects. Preserve missing values and ambiguous matches.
-2. **Statistical inference.** Add correlated-noise and evolving-period models,
-   calibrated injection/recovery experiments, uncertainty estimates, untouched
+2. **Statistical inference.** Extend the implemented quadratic-phase search and
+   conditional independent-noise injection/recovery experiments with correlated
+   noise, calibrated evolving-period uncertainty estimates, untouched
    predictive validation and cadence-aware selection tests. Model disagreement
    alone is not a posterior probability or false-alarm significance.
 3. **Physical pulsation.** Implement documented radial stellar structure,
    equation-of-state, opacity, radiative transfer and convection assumptions;
    compare against established calculations and independent observations.
    The current Duffing analogy is not a substitute for those equations.
-4. **Distributed inference at scale.** Extend existing MPI primitives to
-   hypothesis grids and ensembles, add resumable tasks and checkpoints, then
+4. **Distributed inference at scale.** Extend the implemented MPI ensemble farm
+   to survey-wide hypothesis grids, add resumable tasks and checkpoints, then
    benchmark actual multiple-node strong/weak scaling under a batch scheduler.
    Record allocation, communication, setup time and failures separately.
 5. **Observation planning.** Turn conditional disagreement into an observing
@@ -112,3 +113,7 @@ with compiled assets, native science, MPI and persistent workspace storage;
 it is validated in container CI and does not require installing Docker on this
 development computer. [RESEARCH.md](RESEARCH.md), [CLUSTER.md](CLUSTER.md) and
 [SOURCES.md](SOURCES.md) document methods, cluster execution and catalog coverage.
+[TRANSFORMS.md](TRANSFORMS.md) describes the implemented frequency/drift and
+localized maps, phase dispersion, structure functions and distributed recovery
+experiments. These empirical models expose additional questions; stellar
+interior calculations remain a separate physical milestone.

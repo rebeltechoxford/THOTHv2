@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#080d17">
   <meta name="description" content="THOTH is a Mira variable star observatory: explore published catalogues and analyze real light curves with a native C++ engine.">
   <title>THOTH · Mira Observatory</title>
-  <script type="module" crossorigin src="/assets/index-blG4uh2R.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-Cl6gjE9t.css">
+  <script type="module" crossorigin src="/assets/index-BF0RiVu-.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Bequ3zU0.css">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -16,7 +16,7 @@
       <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 35 12v16L20 37 5 28V12Z"/><path d="M20 8v24M10 14h20M13 27l7-15 7 15M16 22h8"/></svg>
       <span>THOTH<span class="brand-subtitle">MIRA OBSERVATORY</span></span>
     </a>
-    <nav aria-label="Main navigation"><a href="#discovery-lab" class="active">Discovery</a><a href="#observatory">Sky</a><a href="#catalogue">Catalogue</a><a href="#compute-lab">Compute lab</a><a href="#pulsation-lab">Pulsation</a></nav>
+    <nav aria-label="Main navigation"><a href="#discovery-lab" class="active">Discovery</a><a href="#transform-lab">Transforms</a><a href="#observatory">Sky</a><a href="#catalogue">Catalogue</a><a href="#compute-lab">Compute lab</a><a href="#pulsation-lab">Pulsation</a></nav>
     <span class="engine-badge" id="engine-status"><span class="status-dot"></span>Connecting to engine</span>
   </header>
   <main id="observatory">
@@ -54,6 +54,7 @@
         <details class="math-disclosure card"><summary>Open the mathematics &amp; measured computation <span>+</span></summary><div class="discovery-body"><div class="math-grid"><div><p class="eyebrow">THE NATIVE WEIGHTED FIT</p><code>m(t) = c₀ + Σₖ [aₖ sin(2πkt/P) + bₖ cos(2πkt/P)]</code><code>χ² = Σᵢ [(mᵢ − m(tᵢ))/σᵢ]²</code><p>For every candidate frequency, C++ solves weighted least squares. Python ranks one-, two-, and three-harmonic models with chronological held-out observations.</p></div><div><p class="eyebrow">THE CADENCE &amp; COMPLEXITY CHECKS</p><code>W(f) = |(1/N) Σᵢ exp(2πif(tᵢ − t₀))|²</code><code>AIC = χ² + 2k · BIC = χ² + k ln(n)</code><p>The cadence window gives every observing timestamp equal weight. Its peaks come from sampling, independently of brightness. RMSE reports prediction errors in magnitudes; information criteria are conditional on the quoted errors and model assumptions.</p></div></div><div id="research-computation" class="computation-facts"></div><div id="research-caveats" class="research-caveats"></div><button id="research-export" class="export-button">Download research evidence JSON ↓</button></div></details>
       </div>
     </section>
+    <section id="transform-lab" class="transform-section" aria-label="Transform Foundry"></section>
     <section class="pulsation-section" id="pulsation-lab" aria-label="Pulsation Sandbox">
       <div class="section-heading"><div><p class="eyebrow">CHANGE A PARAMETER. CHANGE THE BEHAVIOR.</p><h2>The Pulsation Sandbox</h2></div><span class="data-badge"><span class="status-dot"></span>C++ RK4 integration · doubled-resolution check</span></div>
       <div class="pulsation-grid"><article class="card"><div class="card-heading"><div><p class="eyebrow">A TOY RADIAL OSCILLATOR</p><h3>Build a rhythm from an equation</h3></div></div><div class="discovery-body"><p class="lab-description">Explore a driven, damped nonlinear oscillator. This is a dimensionless teaching model inspired by pulsation, not a hydrodynamic Mira simulation or a mass/radius inference.</p><form id="simulation-form"><label class="scrub-control">Cycle scale / days<strong id="sim-period-label">300 d</strong><input id="sim-period" type="range" min="80" max="700" step="5" value="300"></label><label class="scrub-control">Damping<strong id="sim-damping-label">0.050</strong><input id="sim-damping" type="range" min="0" max="0.4" step="0.005" value="0.05"></label><label class="scrub-control">Driving force<strong id="sim-drive-label">0.150</strong><input id="sim-drive" type="range" min="0" max="0.6" step="0.005" value="0.15"></label><label class="scrub-control">Nonlinear stiffness<strong id="sim-nonlinearity-label">0.200</strong><input id="sim-nonlinearity" type="range" min="0" max="2" step="0.01" value="0.2"></label><div class="simulation-presets" role="group" aria-label="Oscillator parameter presets"><button type="button" data-preset="conservative">Conserve energy</button><button type="button" data-preset="damped">Let it fade</button><button type="button" data-preset="driven">Drive it harder</button></div><button id="simulation-run" type="submit" class="fit-button discovery-run">Integrate in native C++ ↗</button></form><p id="simulation-status" class="fit-status" role="status">Change the parameters, then integrate two time-step resolutions.</p><code id="simulation-equation" class="oscillator-equation">x″ + 2ζx′ + x + αx³ = F cos(τ)</code></div></article><article class="card pulsation-view"><div class="card-heading"><div><p class="eyebrow">STATE, ENERGY &amp; NUMERICAL HONESTY</p><h3>A phase portrait you can touch</h3></div><button id="simulation-play" class="export-button" disabled>Play cycle ▶</button></div><div class="discovery-body"><div class="oscillator-stage"><div class="sandbox-star" id="sandbox-star" aria-hidden="true"></div><div><span class="eyebrow">ILLUSTRATIVE DISPLACEMENT</span><strong id="sim-displacement">—</strong><small id="sim-time">Awaiting integration</small></div></div><div class="simulation-tabs" role="tablist" aria-label="Simulation visualization"><button role="tab" aria-selected="true" data-sim-chart="displacement">Motion</button><button role="tab" aria-selected="false" data-sim-chart="phase">Phase portrait</button><button role="tab" aria-selected="false" data-sim-chart="energy">Energy balance</button></div><div id="simulation-chart" class="simulation-chart"><p class="empty-message">Native integration reveals the trajectory.<br>Run the oscillator to explore it.</p></div><label class="scrub-control">Travel through the integration<strong id="sim-step-label">0 / 0</strong><input id="sim-scrub" type="range" min="0" max="0" value="0" step="1" disabled></label><div id="simulation-metrics" class="simulation-metrics"></div><p id="simulation-caveat" class="chart-caption unpadded">The animated disc shows the sign and scale of the toy displacement. It is not a predicted stellar radius or luminosity.</p></div></article></div>
@@ -122,5 +123,4 @@
   <div id="toast" role="status" hidden></div>
 </body>
 </html>
-
 
